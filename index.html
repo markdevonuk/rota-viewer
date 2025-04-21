@@ -8,7 +8,7 @@
 </head>
 <body class="p-3">
   <div class="container">
-    <h2 class="mb-3">Rota Viewer v1.2</h2>
+    <h2 class="mb-3">Rota Viewer v1.3</h2>
     <label for="daySelect">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
       <option>Tuesday</option>
@@ -24,49 +24,59 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyHNv40VRUIVAbwK0oRBEBMPlIdYXL6Lh8zHmPE8zm7IPEGeDbdX3JgrDNaOK5oPSPc-A/exec";
+  const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
 
-    function loadRota() {
-      const day = document.getElementById("daySelect").value;
-      document.getElementById("rotaContent").innerHTML = "Loading...";
+  function loadRota() {
+    const day = document.getElementById("daySelect").value;
+    document.getElementById("rotaContent").innerHTML = "Loading...";
 
-      fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.length) {
-            document.getElementById("rotaContent").innerHTML = "<p>No data found for this day.</p>";
-            return;
+    fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.length) {
+          document.getElementById("rotaContent").innerHTML = "<p>No data found for this day.</p>";
+          return;
+        }
+
+        let html = "";
+        let currentShiftBlock = "";
+        let currentSection = "";
+
+        data.forEach(row => {
+          if (row.shiftBlock !== currentShiftBlock) {
+            if (currentShiftBlock) html += "</tbody></table>";
+            currentShiftBlock = row.shiftBlock;
+            html += `<h3 class="mt-4">${currentShiftBlock} Shifts</h3>`;
           }
 
-          let html = "";
-          let currentSection = "";
+          if (row.section !== currentSection) {
+            if (currentSection && currentShiftBlock === row.shiftBlock) html += "</tbody></table>";
+            currentSection = row.section;
+            html += `<h5 class="mt-3">${currentSection}</h5>`;
+            html += `<table class="table table-sm table-bordered"><thead><tr>
+                      <th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th>
+                     </tr></thead><tbody>`;
+          }
 
-          data.forEach(row => {
-            if (row.section !== currentSection) {
-              if (currentSection) html += "</tbody></table>";
-              currentSection = row.section;
-              html += `<h4 class="mt-4">${currentSection}</h4>`;
-              html += `<table class="table table-bordered"><thead><tr><th>Role</th><th>Shift</th><th>Crew 1</th><th>Crew 2</th></tr></thead><tbody>`;
-            }
-
-            html += `<tr>
-              <td>${row.role}</td>
-              <td>${row.time}</td>
-              <td>${row.crew1 || ""}</td>
-              <td>${row.crew2 || ""}</td>
-            </tr>`;
-          });
-
-          html += "</tbody></table>";
-          document.getElementById("rotaContent").innerHTML = html;
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById("rotaContent").innerHTML = "<p>Error loading rota.</p>";
+          html += `<tr>
+                    <td>${row.role}</td>
+                    <td>${row.time}</td>
+                    <td>${row.crew1}</td>
+                    <td>${row.crew2}</td>
+                   </tr>`;
         });
-    }
 
-    window.onload = loadRota;
-  </script>
+        html += "</tbody></table>";
+        document.getElementById("rotaContent").innerHTML = html;
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("rotaContent").innerHTML = "<p>Error loading rota.</p>";
+      });
+  }
+
+  window.onload = loadRota;
+</script>
+
 </body>
 </html>
