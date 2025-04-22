@@ -48,7 +48,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota v2.5</h2>
+    <h2>Event Rota v2.6</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
@@ -110,20 +110,44 @@
               if ((section === "Responders" || section === "General") && !meaningful) continue;
 
               html += `<h5>${section}</h5>`;
-              html += `<div class="table-container"><table class="table table-bordered table-sm"><thead>
-                         <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
-                       </thead><tbody>`;
 
-              rows.forEach(row => {
-                html += `<tr>
-                  <td>${row.role || "<span class='text-muted'>–</span>"}</td>
-                  <td>${row.time || "<span class='text-muted'>–</span>"}</td>
-                  <td>${row.crew1 || "<span class='text-muted'>–</span>"}</td>
-                  <td>${row.crew2 || "<span class='text-muted'>–</span>"}</td>
-                </tr>`;
-              });
+// Mobile card layout
+html += `
+<div class="d-md-none">
+  ${rows.map(row => `
+    <div class="card mb-2">
+      <div class="card-body p-2">
+        <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+        <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+        <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+        <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+      </div>
+    </div>
+  `).join("")}
+</div>
+`;
 
-              html += "</tbody></table></div>";
+// Desktop table layout
+html += `
+<div class="table-container d-none d-md-block">
+  <table class="table table-bordered table-sm">
+    <thead>
+      <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
+    </thead>
+    <tbody>
+      ${rows.map(row => `
+        <tr>
+          <td>${row.role || "<span class='text-muted'>–</span>"}</td>
+          <td>${row.time || "<span class='text-muted'>–</span>"}</td>
+          <td>${row.crew1 || "<span class='text-muted'>–</span>"}</td>
+          <td>${row.crew2 || "<span class='text-muted'>–</span>"}</td>
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>
+</div>
+`;
+
             }
           }
 
