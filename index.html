@@ -29,7 +29,7 @@
 </head>
 <body>
   <div class="container">
-    <h2 class="mb-4">Event Rota v1.8</h2>
+    <h2 class="mb-4">Event Rota v1.9</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
@@ -46,61 +46,70 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec";  // Replace with your new working URL
+  const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";  // replace with your URL
 
-    function loadRota() {
-      const day = document.getElementById("daySelect").value;
-      document.getElementById("rotaContent").innerHTML = "Loading...";
+  function loadRota() {
+    const day = document.getElementById("daySelect").value;
+    document.getElementById("rotaContent").innerHTML = "Loading...";
 
-      fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
-        .then(response => response.json())
-        .then(data => {
-          if (!data.length) {
-            document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
-            return;
-          }
+    fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (!data.length) {
+          document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
+          return;
+        }
 
-          let html = "";
-          let currentShift = "";
-          let currentSection = "";
+        // Step 1: Group rows by shiftTitle and section
+        const grouped = {};
+        data.forEach(row => {
+          const shift = row.shiftTitle || "Other";
+          const section = row.section || "General";
 
-          data.forEach(row => {
-            // New shift title block
-            if (row.shiftTitle !== currentShift) {
-              if (currentShift) html += "</tbody></table>";
-              currentShift = row.shiftTitle;
-              currentSection = ""; // Reset section on new shift block
-              html += `<h3>${currentShift} Shifts</h3>`;
-            }
+          if (!grouped[shift]) grouped[shift] = {};
+          if (!grouped[shift][section]) grouped[shift][section] = [];
 
-            // New section within shift block
-            if (row.section !== currentSection) {
-              if (currentSection) html += "</tbody></table>";
-              currentSection = row.section;
-              html += `<h5>${currentSection}</h5>`;
-              html += `<table class="table table-bordered table-sm"><thead>
-                        <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
-                       </thead><tbody>`;
-            }
-
-            html += `<tr>
-                      <td>${row.role}</td>
-                      <td>${row.time}</td>
-                      <td>${row.crew1}</td>
-                      <td>${row.crew2}</td>
-                    </tr>`;
-          });
-
-          html += "</tbody></table>";
-          document.getElementById("rotaContent").innerHTML = html;
-        })
-        .catch(err => {
-          console.error("Rota fetch failed", err);
-          document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
+          grouped[shift][section].push(row);
         });
-    }
 
-    window.onload = loadRota;
-  </script>
+        // Step 2: Build HTML
+        let html = "";
+        for (const shiftTitle in grouped) {
+          html += `<h3>${shiftTitle} Shifts</h3>`;
+
+          const sections = grouped[shiftTitle];
+          for (const section in sections) {
+            const rows = sections[section];
+            if (!rows.length) continue; // Skip empty sections
+
+            html += `<h5>${section}</h5>`;
+            html += `<table class="table table-bordered table-sm"><thead>
+                      <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
+                    </thead><tbody>`;
+
+            rows.forEach(row => {
+              html += `<tr>
+                         <td>${row.role}</td>
+                         <td>${row.time}</td>
+                         <td>${row.crew1}</td>
+                         <td>${row.crew2}</td>
+                       </tr>`;
+            });
+
+            html += "</tbody></table>";
+          }
+        }
+
+        document.getElementById("rotaContent").innerHTML = html;
+      })
+      .catch(err => {
+        console.error("Rota fetch failed", err);
+        document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
+      });
+  }
+
+  window.onload = loadRota;
+</script>
+
 </body>
 </html>
