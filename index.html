@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rota Viewer</title>
+  <title>Rota Viewer v2.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
@@ -10,26 +10,29 @@
       padding: 1rem;
       background-color: #f9f9f9;
     }
+    h2 {
+      font-size: 1.8rem;
+      font-weight: bold;
+      margin-bottom: 1.5rem;
+    }
     h3 {
       margin-top: 2rem;
+      font-size: 1.4rem;
       border-bottom: 2px solid #ddd;
-      padding-bottom: 0.5rem;
+      padding-bottom: 0.3rem;
     }
     h5 {
-      margin-top: 1.5rem;
+      margin-top: 1rem;
       font-weight: 600;
     }
-    table {
-      background-color: white;
-    }
-    .table thead th {
+    .table th {
       background-color: #f0f0f0;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2 class="mb-4">Event Rota v2.1</h2>
+    <h2>Event Rota</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
@@ -42,55 +45,80 @@
       <option>Monday</option>
     </select>
 
-    <div id="rotaContent">Loading rota... good things come to those that wait</div>
+    <div id="rotaContent">Loading rota...</div>
   </div>
 
   <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec"; // Your real script URL here
+    const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec";  // Replace with your real script URL
 
-  function loadRota() {
-    const day = document.getElementById("daySelect").value;
-    document.getElementById("rotaContent").innerHTML = "Loading...";
+    function loadRota() {
+      const day = document.getElementById("daySelect").value;
+      document.getElementById("rotaContent").innerHTML = "Loading...";
 
-    fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
-      .then(response => response.json())
-      .then(data => {
-        if (!data.length) {
-          document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
-          return;
-        }
+      fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !Array.isArray(data) || data.length === 0) {
+            document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
+            return;
+          }
 
-        // Grouping: shiftTitle → section → rows[]
-        const grouped = {};
-        data.forEach(row => {
-          const shift = row.shiftTitle?.trim();
-          const section = row.section?.trim() || "General";
+          const grouped = {};
 
-          // Skip any rows with no shift title (prevents "Other Shifts" block)
-          if (!shift || shift.toLowerCase() === "other") return;
+          // Step 1: Group rows by shiftTitle and section
+          data.forEach(row => {
+            const shift = (row.shiftTitle || "").trim();
+            const section = (row.section || "").trim();
 
-          if (!grouped[shift]) grouped[shift] = {};
-          if (!grouped[shift][section]) grouped[shift][section] = [];
+            if (!shift || shift.toLowerCase() === "other") return;
 
-          grouped[shift][section].push(row);
+            if (!grouped[shift]) grouped[shift] = {};
+            if (!grouped[shift][section]) grouped[shift][section] = [];
+
+            grouped[shift][section].push(row);
+          });
+
+          let html = "";
+
+          for (const shiftTitle in grouped) {
+            html += `<h3>${shiftTitle} Shifts</h3>`;
+            const sections = grouped[shiftTitle];
+
+            for (const section in sections) {
+              const rows = sections[section];
+              if (!rows.length) continue;
+
+              const meaningful = rows.some(r => r.role || r.time || r.crew1 || r.crew2);
+              if ((section === "Responders" || section === "General") && !meaningful) continue;
+
+              html += `<h5>${section}</h5>`;
+              html += `<table class="table table-bordered table-sm"><thead>
+                        <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
+                      </thead><tbody>`;
+
+              rows.forEach(row => {
+                html += `<tr>
+                           <td>${row.role || ""}</td>
+                           <td>${row.time || ""}</td>
+                           <td>${row.crew1 || ""}</td>
+                           <td>${row.crew2 || ""}</td>
+                         </tr>`;
+              });
+
+              html += "</tbody></table>";
+            }
+          }
+
+          document.getElementById("rotaContent").innerHTML = html || "<p>No shifts to display.</p>";
+        })
+        .catch(err => {
+          console.error("Error loading rota:", err);
+          document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
         });
+    }
 
-        let html = "";
-
-        // Loop through grouped shift blocks
-        for (const shiftTitle in grouped) {
-          html += `<h3>${shiftTitle} Shifts</h3>`;
-          const sections = grouped[shiftTitle];
-
-          for (const section in sections) {
-            const rows = sections[section];
-            if (!rows.length) continue;
-
-            // Skip "General" or "Responders" sections if they’re empty
-            if ((section === "General" || section === "Responders") && rows.every(r => !r.role && !r.time)) continue;
-
-            html += `<h5>${section}</h5>`;
-            html += `<table class="table table-bordered table-sm"><thead>
-
+    window.onload = loadRota;
+  </script>
 </body>
 </html>
+
