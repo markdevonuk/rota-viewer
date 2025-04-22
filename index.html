@@ -29,7 +29,7 @@
 </head>
 <body>
   <div class="container">
-    <h2 class="mb-4">Event Rota v2.0</h2>
+    <h2 class="mb-4">Event Rota v2.1</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
@@ -42,11 +42,11 @@
       <option>Monday</option>
     </select>
 
-    <div id="rotaContent">Loading rota...</div>
+    <div id="rotaContent">Loading rota... good things come to those that wait</div>
   </div>
 
   <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec";  // replace with your URL
+  const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec"; // Your real script URL here
 
   function loadRota() {
     const day = document.getElementById("daySelect").value;
@@ -60,11 +60,14 @@
           return;
         }
 
-        // Step 1: Group rows by shiftTitle and section
+        // Grouping: shiftTitle → section → rows[]
         const grouped = {};
         data.forEach(row => {
-          const shift = row.shiftTitle || "Other";
-          const section = row.section || "General";
+          const shift = row.shiftTitle?.trim();
+          const section = row.section?.trim() || "General";
+
+          // Skip any rows with no shift title (prevents "Other Shifts" block)
+          if (!shift || shift.toLowerCase() === "other") return;
 
           if (!grouped[shift]) grouped[shift] = {};
           if (!grouped[shift][section]) grouped[shift][section] = [];
@@ -72,44 +75,22 @@
           grouped[shift][section].push(row);
         });
 
-        // Step 2: Build HTML
         let html = "";
+
+        // Loop through grouped shift blocks
         for (const shiftTitle in grouped) {
           html += `<h3>${shiftTitle} Shifts</h3>`;
-
           const sections = grouped[shiftTitle];
+
           for (const section in sections) {
             const rows = sections[section];
-            if (!rows.length) continue; // Skip empty sections
+            if (!rows.length) continue;
+
+            // Skip "General" or "Responders" sections if they’re empty
+            if ((section === "General" || section === "Responders") && rows.every(r => !r.role && !r.time)) continue;
 
             html += `<h5>${section}</h5>`;
             html += `<table class="table table-bordered table-sm"><thead>
-                      <tr><th>Role</th><th>Time</th><th>Crew 1</th><th>Crew 2</th></tr>
-                    </thead><tbody>`;
-
-            rows.forEach(row => {
-              html += `<tr>
-                         <td>${row.role}</td>
-                         <td>${row.time}</td>
-                         <td>${row.crew1}</td>
-                         <td>${row.crew2}</td>
-                       </tr>`;
-            });
-
-            html += "</tbody></table>";
-          }
-        }
-
-        document.getElementById("rotaContent").innerHTML = html;
-      })
-      .catch(err => {
-        console.error("Rota fetch failed", err);
-        document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
-      });
-  }
-
-  window.onload = loadRota;
-</script>
 
 </body>
 </html>
