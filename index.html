@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rota Viewer v2.4</title>
+  <title>Rota Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
@@ -28,15 +28,17 @@
     .table-container {
       overflow-x: auto;
     }
-    .table {
-      min-width: 600px;
-      table-layout: fixed;
-    }
-    .table th, .table td {
-      width: 25%;
-      word-wrap: break-word;
-      white-space: normal;
-    }
+    .table-container {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  table-layout: auto;
+}
+.table th, .table td {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
     .spinner {
       display: flex;
       justify-content: center;
@@ -46,7 +48,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota</h2>
+    <h2>Event Rota v2.5</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
