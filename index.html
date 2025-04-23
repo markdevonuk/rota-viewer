@@ -36,8 +36,6 @@
     .card p {
       font-size: 0.95rem;
     }
-
-    /* Section colours */
     .card-leadership {
       background-color: #e7f3ff;
     }
@@ -53,15 +51,13 @@
     .card-makeready {
       background-color: #fefce8;
     }
-
-    /* Duty Team Leader Highlight */
     .card-duty-leader {
       border-left: 5px solid gold;
       background-color: #fffbe6;
       position: relative;
     }
     .card-duty-leader::before {
-      content: "";
+      content: "⭐ Duty Team Leader";
       position: absolute;
       top: 0;
       left: 0;
@@ -76,10 +72,11 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota v2.9</h2>
+    <h2>Event Rota V3.0</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
-    <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
+    <select id="daySelect" class="form-select mb-3" onchange="filterByDay()">
+      <option value="">All Days</option>
       <option>Tuesday</option>
       <option>Wednesday</option>
       <option>Thursday</option>
@@ -88,6 +85,9 @@
       <option>Sunday</option>
       <option>Monday</option>
     </select>
+
+    <label for="searchInput" class="form-label">Search by name, role, or section:</label>
+    <input type="text" id="searchInput" class="form-control mb-4" placeholder="e.g. Mark, Medic, Vehicle..." oninput="filterData()">
 
     <div id="rotaContent">
       <div class="spinner">
@@ -99,100 +99,129 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec";  // Replace with your real script URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbwwURdMiSHp4TC3iRbFQgGlcogaOUjMTeQottqLgZjNPUOAEBp3ApEOpcpm4T-FjzzwQQ/exec"; // Replace with your Script URL
+    let weeklyData = []; // All shifts from all days
+    let currentDay = "";
+    let currentSearch = "";
 
-    function loadRota() {
-      const daySelect = document.getElementById("daySelect");
-      const day = daySelect.value;
-      localStorage.setItem("selectedDay", day);
-
-      document.getElementById("rotaContent").innerHTML =
-        '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-
-      fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
+    function loadWeeklyRota() {
+      fetch(API_URL)
         .then(response => response.json())
         .then(data => {
-          if (!data || !Array.isArray(data) || data.length === 0) {
-            document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
-            return;
+          weeklyData = [];
+
+          for (const day in data) {
+            data[day].forEach(shift => {
+              weeklyData.push({ ...shift, day });
+            });
           }
 
-          const grouped = {};
-          data.forEach(row => {
-            const shift = (row.shiftTitle || "").trim();
-            const section = (row.section || "").trim();
-
-            if (!shift || shift.toLowerCase() === "other") return;
-
-            if (!grouped[shift]) grouped[shift] = {};
-            if (!grouped[shift][section]) grouped[shift][section] = [];
-
-            grouped[shift][section].push(row);
-          });
-
-          let html = "";
-
-          for (const shiftTitle in grouped) {
-            html += `<h3>${shiftTitle} Shifts</h3>`;
-            const sections = grouped[shiftTitle];
-
-            for (const section in sections) {
-              const rows = sections[section];
-              if (!rows.length) continue;
-
-              const meaningful = rows.some(r => r.role || r.time || r.crew1 || r.crew2);
-              if ((section === "Responders" || section === "General") && !meaningful) continue;
-
-              html += `<h5>${section}</h5>`;
-              html += `
-              <div class="row g-2">
-                ${rows.map(row => {
-                  const sectionLower = section.toLowerCase();
-                  const roleLower = (row.role || "").toLowerCase();
-
-                  const cardClass =
-                    sectionLower.includes("leadership") ? "card-leadership" :
-                    sectionLower.includes("vehicle") ? "card-vehicle" :
-                    sectionLower.includes("responders") ? "card-responders" :
-                    sectionLower.includes("medcomms") ? "card-medcomms" :
-                    sectionLower.includes("make ready") ? "card-makeready" :
-                    "";
-
-                  const isDutyLeader = roleLower.includes("duty team leader");
-                  const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
-
-                  return `
-                    <div class="col-12 col-md-6 col-lg-4">
-                      <div class="${fullCardClass}">
-                        <div class="card-body p-3">
-                          <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  `;
-                }).join("")}
-              </div>
-              `;
-            }
-          }
-
-          document.getElementById("rotaContent").innerHTML = html || "<p>No shifts to display.</p>";
+          filterData();
         })
         .catch(err => {
-          console.error("Error loading rota:", err);
+          console.error("Error loading weekly rota:", err);
           document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
         });
+    }
+
+    function filterByDay() {
+      currentDay = document.getElementById("daySelect").value;
+      localStorage.setItem("selectedDay", currentDay);
+      filterData();
+    }
+
+    function filterData() {
+      currentSearch = document.getElementById("searchInput").value.toLowerCase().trim();
+      let filtered = weeklyData;
+
+      if (currentDay) {
+        filtered = filtered.filter(entry => entry.day === currentDay);
+      }
+
+      if (currentSearch) {
+        filtered = filtered.filter(entry =>
+          (entry.role || "").toLowerCase().includes(currentSearch) ||
+          (entry.time || "").toLowerCase().includes(currentSearch) ||
+          (entry.section || "").toLowerCase().includes(currentSearch) ||
+          (entry.crew1 || "").toLowerCase().includes(currentSearch) ||
+          (entry.crew2 || "").toLowerCase().includes(currentSearch)
+        );
+      }
+
+      renderRota(filtered);
+    }
+
+    function renderRota(data) {
+      if (!data || data.length === 0) {
+        document.getElementById("rotaContent").innerHTML = "<p>No matching shifts found.</p>";
+        return;
+      }
+
+      let html = "";
+
+      const grouped = {};
+      data.forEach(row => {
+        const key = `${row.day}::${row.shiftTitle}`;
+        if (!grouped[key]) grouped[key] = { day: row.day, title: row.shiftTitle, entries: [] };
+        grouped[key].entries.push(row);
+      });
+
+      for (const key in grouped) {
+        const group = grouped[key];
+        html += `<h3>${group.title} Shifts – ${group.day}</h3>`;
+
+        const sectionGroups = {};
+        group.entries.forEach(row => {
+          if (!sectionGroups[row.section]) sectionGroups[row.section] = [];
+          sectionGroups[row.section].push(row);
+        });
+
+        for (const section in sectionGroups) {
+          html += `<h5>${section}</h5>`;
+          const rows = sectionGroups[section];
+
+          html += `<div class="row g-2">`;
+          rows.forEach(row => {
+            const sectionLower = row.section.toLowerCase();
+            const roleLower = (row.role || "").toLowerCase();
+
+            const cardClass =
+              sectionLower.includes("leadership") ? "card-leadership" :
+              sectionLower.includes("vehicle") ? "card-vehicle" :
+              sectionLower.includes("responders") ? "card-responders" :
+              sectionLower.includes("medcomms") ? "card-medcomms" :
+              sectionLower.includes("make ready") ? "card-makeready" :
+              "";
+
+            const isDutyLeader = roleLower.includes("duty team leader");
+            const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
+
+            html += `
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="${fullCardClass}">
+                  <div class="card-body p-3">
+                    <p class="mb-1"><strong>Day:</strong> ${row.day}</p>
+                    <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          html += `</div>`;
+        }
+      }
+
+      document.getElementById("rotaContent").innerHTML = html;
     }
 
     window.onload = () => {
       const savedDay = localStorage.getItem("selectedDay");
       if (savedDay) document.getElementById("daySelect").value = savedDay;
-      loadRota();
+      loadWeeklyRota();
     };
   </script>
 </body>
 </html>
-
