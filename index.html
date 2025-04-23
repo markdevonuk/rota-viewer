@@ -58,7 +58,7 @@
       position: relative;
     }
     .card-duty-leader::before {
-      content: "⭐ Duty Team Leader";
+      content: "";
       position: absolute;
       top: 0;
       left: 0;
@@ -92,7 +92,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V4.22</h2>
+    <h2>Event Rota V2</h2>
 
     <div class="mb-4">
       <strong>Jump to:</strong>
@@ -136,7 +136,7 @@
         .then(response => response.json())
         .then(data => {
           if (!data || !Array.isArray(data) || data.length === 0) {
-            document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
+            document.getElementById("rotaContent").innerHTML = "<p>Nothing found for this day.... lets go to the pub instead!</p>";
             return;
           }
 
