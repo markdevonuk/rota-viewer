@@ -34,31 +34,19 @@
       font-size: 0.95rem;
     }
 
-    /* Section colours */
-    .card-leadership {
-      background-color: #e7f3ff;
-    }
-    .card-vehicle {
-      background-color: #f0f0f0;
-    }
-    .card-responders {
-      background-color: #e8fbe8;
-    }
-    .card-medcomms {
-      background-color: #fff0f6;
-    }
-    .card-makeready {
-      background-color: #fefce8;
-    }
+    .card-leadership { background-color: #e7f3ff; }
+    .card-vehicle { background-color: #f0f0f0; }
+    .card-responders { background-color: #e8fbe8; }
+    .card-medcomms { background-color: #fff0f6; }
+    .card-makeready { background-color: #fefce8; }
 
-    /* Duty Team Leader Highlight */
     .card-duty-leader {
       border-left: 5px solid gold;
       background-color: #fffbe6;
       position: relative;
     }
     .card-duty-leader::before {
-      content: "";
+      content: "⭐ Duty Team Leader";
       position: absolute;
       top: 0;
       left: 0;
@@ -70,21 +58,10 @@
       border-bottom-right-radius: 0.5rem;
     }
 
-    /* Shift title badge styles */
-    .badge-early {
-      background-color: #0d6efd;
-      color: #fff;
-    }
-    .badge-late {
-      background-color: #6f42c1;
-      color: #fff;
-    }
-    .badge-night {
-      background-color: #212529;
-      color: #fff;
-    }
+    .badge-early { background-color: #0d6efd; color: #fff; }
+    .badge-late { background-color: #6f42c1; color: #fff; }
+    .badge-night { background-color: #212529; color: #fff; }
 
-    /* Section spacing */
     .section-block {
       margin-bottom: 2rem;
     }
@@ -92,7 +69,15 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V2</h2>
+    <h2>Event Rota V5.0</h2>
+
+    <div class="mb-4">
+      <label for="searchInput" class="form-label">Search by name:</label>
+      <div class="input-group">
+        <input type="text" id="searchInput" class="form-control" placeholder="Enter full or partial name...">
+        <button class="btn btn-primary" onclick="runSearch()">Search</button>
+      </div>
+    </div>
 
     <div class="mb-4">
       <strong>Jump to:</strong>
@@ -122,7 +107,7 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxJ4sh8RjD6jmVZdt8p6_JY789SjfJrP4MZJRtr3jYQGXVLuozu7GULAN9Ct_VEUt3aLg/exec";  // Replace with your live script URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbwUIhG-XjhImmUl048YWjOG_oJaJ996ELx4v_mX7TnnzAhmjpvlTIoh3RX-VNYJuUowXQ/exec"; // Replace with your own URL
 
     function loadRota() {
       const daySelect = document.getElementById("daySelect");
@@ -134,93 +119,212 @@
 
       fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
         .then(response => response.json())
-        .then(data => {
-          if (!data || !Array.isArray(data) || data.length === 0) {
-            document.getElementById("rotaContent").innerHTML = "<p>Nothing found for this day.... lets go to the pub instead!</p>";
-            return;
-          }
-
-          const grouped = {};
-          data.forEach(row => {
-            const shift = (row.shiftTitle || "").trim();
-            const section = (row.section || "").trim();
-
-            if (!shift || shift.toLowerCase() === "other") return;
-
-            if (!grouped[shift]) grouped[shift] = {};
-            if (!grouped[shift][section]) grouped[shift][section] = [];
-
-            grouped[shift][section].push(row);
-          });
-
-          let html = "";
-
-          for (const shiftTitle in grouped) {
-            const shiftTitleLower = shiftTitle.toLowerCase();
-            let badgeClass = "";
-            if (shiftTitleLower.includes("early")) badgeClass = "badge-early";
-            else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
-            else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
-
-            const shiftLabel = `${shiftTitle} Shifts`;
-            const anchorId = badgeClass ? badgeClass.replace('badge-', '') : shiftTitleLower.replace(/\s+/g, '-');
-
-            html += `
-              <div class="mb-3" id="${anchorId}">
-                <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shiftLabel}</span>
-              </div>
-            `;
-
-            const sections = grouped[shiftTitle];
-            for (const section in sections) {
-              const rows = sections[section];
-              if (!rows.length) continue;
-
-              const meaningful = rows.some(r => r.role || r.time || r.crew1 || r.crew2);
-              if ((section === "Responders" || section === "General") && !meaningful) continue;
-
-              html += `<div class="section-block"><h5>${section}</h5>`;
-              html += `
-              <div class="row g-2">
-                ${rows.map(row => {
-                  const sectionLower = section.toLowerCase();
-                  const roleLower = (row.role || "").toLowerCase();
-
-                  const cardClass =
-                    sectionLower.includes("leadership") ? "card-leadership" :
-                    sectionLower.includes("vehicle") ? "card-vehicle" :
-                    sectionLower.includes("responders") ? "card-responders" :
-                    sectionLower.includes("medcomms") ? "card-medcomms" :
-                    sectionLower.includes("make ready") ? "card-makeready" :
-                    "";
-
-                  const isDutyLeader = roleLower.includes("duty team leader");
-                  const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
-
-                  return `
-                    <div class="col-12 col-md-6 col-lg-4">
-                      <div class="${fullCardClass}">
-                        <div class="card-body p-3">
-                          <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
-                          <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  `;
-                }).join("")}
-              </div></div>
-              `;
-            }
-          }
-
-          document.getElementById("rotaContent").innerHTML = html || "<p>No shifts to display.</p>";
-        })
+        .then(renderRota)
         .catch(err => {
           console.error("Error loading rota:", err);
           document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
         });
+    }
+
+    function renderRota(data) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
+        return;
+      }
+
+      const grouped = {};
+      data.forEach(row => {
+        const shift = (row.shiftTitle || "").trim();
+        const section = (row.section || "").trim();
+
+        if (!shift || shift.toLowerCase() === "other") return;
+
+        if (!grouped[shift]) grouped[shift] = {};
+        if (!grouped[shift][section]) grouped[shift][section] = [];
+
+        grouped[shift][section].push(row);
+      });
+
+      let html = "";
+
+      for (const shiftTitle in grouped) {
+        const shiftTitleLower = shiftTitle.toLowerCase();
+        let badgeClass = "";
+        if (shiftTitleLower.includes("early")) badgeClass = "badge-early";
+        else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
+        else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
+
+        const shiftLabel = `${shiftTitle} Shifts`;
+        const anchorId = badgeClass ? badgeClass.replace('badge-', '') : shiftTitleLower.replace(/\s+/g, '-');
+
+        html += `
+          <div class="mb-3" id="${anchorId}">
+            <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shiftLabel}</span>
+          </div>
+        `;
+
+        const sections = grouped[shiftTitle];
+        for (const section in sections) {
+          const rows = sections[section];
+          if (!rows.length) continue;
+
+          const meaningful = rows.some(r => r.role || r.time || r.crew1 || r.crew2);
+          if ((section === "Responders" || section === "General") && !meaningful) continue;
+
+          html += `<div class="section-block"><h5>${section}</h5><div class="row g-2">`;
+
+          html += rows.map(row => {
+            const sectionLower = section.toLowerCase();
+            const roleLower = (row.role || "").toLowerCase();
+
+            const cardClass =
+              sectionLower.includes("leadership") ? "card-leadership" :
+              sectionLower.includes("vehicle") ? "card-vehicle" :
+              sectionLower.includes("responders") ? "card-responders" :
+              sectionLower.includes("medcomms") ? "card-medcomms" :
+              sectionLower.includes("make ready") ? "card-makeready" :
+              "";
+
+            const isDutyLeader = roleLower.includes("duty team leader");
+            const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
+
+            return `
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="${fullCardClass}">
+                  <div class="card-body p-3">
+                    <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+                    <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          html += `</div></div>`;
+        }
+      }
+
+      document.getElementById("rotaContent").innerHTML = html || "<p>No shifts to display.</p>";
+    }
+
+    function runSearch() {
+      const query = document.getElementById("searchInput").value.trim();
+      if (!query) return alert("Please enter a name to search.");
+
+      document.getElementById("rotaContent").innerHTML =
+        '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+      fetch(`${API_URL}?search=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(res => {
+          const { matches, names } = res;
+
+          if (!matches.length) {
+            document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+            return;
+          }
+
+          const uniqueNames = names.filter((v, i, arr) => arr.indexOf(v) === i);
+          if (uniqueNames.length > 1) {
+            let nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
+            document.getElementById("rotaContent").innerHTML = `
+              <p>Multiple people matched your search. Please choose:</p>
+              <ul>${nameList}</ul>
+            `;
+          } else {
+            displaySearchResults(matches, names[0]);
+          }
+        })
+        .catch(err => {
+          console.error("Search error:", err);
+          document.getElementById("rotaContent").innerHTML = "<p>Error performing search.</p>";
+        });
+    }
+
+    function filterByExactName(name) {
+      fetch(`${API_URL}?search=${encodeURIComponent(name)}`)
+        .then(res => res.json())
+        .then(res => displaySearchResults(res.matches, name))
+        .catch(() => document.getElementById("rotaContent").innerHTML = "<p>Error filtering by name.</p>");
+    }
+
+    function displaySearchResults(data, name) {
+      if (!data || data.length === 0) {
+        document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
+        return;
+      }
+
+      const grouped = {};
+      data.forEach(row => {
+        const day = row.day;
+        const shift = (row.shiftTitle || "").trim();
+        const section = (row.section || "").trim();
+
+        if (!grouped[day]) grouped[day] = {};
+        if (!grouped[day][shift]) grouped[day][shift] = {};
+        if (!grouped[day][shift][section]) grouped[day][shift][section] = [];
+
+        grouped[day][shift][section].push(row);
+      });
+
+      let html = `<h4>Shifts for <strong>${name}</strong></h4>`;
+      for (const day in grouped) {
+        html += `<h5 class="mt-4">${day}</h5>`;
+
+        for (const shift in grouped[day]) {
+          const shiftTitleLower = shift.toLowerCase();
+          let badgeClass = "";
+          if (shiftTitleLower.includes("early")) badgeClass = "badge-early";
+          else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
+          else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
+
+          html += `
+            <div class="mb-3">
+              <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shift} Shifts</span>
+            </div>
+          `;
+
+          for (const section in grouped[day][shift]) {
+            const rows = grouped[day][shift][section];
+            html += `<div class="section-block"><h5>${section}</h5><div class="row g-2">`;
+
+            html += rows.map(row => {
+              const sectionLower = section.toLowerCase();
+              const roleLower = (row.role || "").toLowerCase();
+
+              const cardClass =
+                sectionLower.includes("leadership") ? "card-leadership" :
+                sectionLower.includes("vehicle") ? "card-vehicle" :
+                sectionLower.includes("responders") ? "card-responders" :
+                sectionLower.includes("medcomms") ? "card-medcomms" :
+                sectionLower.includes("make ready") ? "card-makeready" :
+                "";
+
+              const isDutyLeader = roleLower.includes("duty team leader");
+              const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
+
+              return `
+                <div class="col-12 col-md-6 col-lg-4">
+                  <div class="${fullCardClass}">
+                    <div class="card-body p-3">
+                      <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+                      <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+                      <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+                      <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("");
+
+            html += `</div></div>`;
+          }
+        }
+      }
+
+      document.getElementById("rotaContent").innerHTML = html;
     }
 
     window.onload = () => {
@@ -231,3 +335,4 @@
   </script>
 </body>
 </html>
+
