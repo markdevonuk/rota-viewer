@@ -72,11 +72,34 @@
       font-size: 0.75rem;
       border-bottom-right-radius: 0.5rem;
     }
+    h3.shift-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 4px solid #ccc;
+  background-color: #f2f2f2;
+  border-radius: 0.5rem;
+}
+
+.badge-early {
+  background-color: #0d6efd;
+  color: #fff;
+}
+.badge-late {
+  background-color: #6f42c1;
+  color: #fff;
+}
+.badge-night {
+  background-color: #212529;
+  color: #fff;
+}
+
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V4.0</h2>
+    <h2>Event Rota V4.1</h2>
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
@@ -133,7 +156,19 @@
           let html = "";
 
           for (const shiftTitle in grouped) {
-            html += `<h3>${shiftTitle} Shifts</h3>`;
+            const shiftTitleLower = shiftTitle.toLowerCase();
+let badgeClass = "";
+if (shiftTitleLower.includes("early")) badgeClass = "badge-early";
+else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
+else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
+
+html += `
+  <h3 class="shift-heading">
+    ${shiftTitle} Shifts
+    ${badgeClass ? `<span class="badge ${badgeClass} text-uppercase">${shiftTitle}</span>` : ""}
+  </h3>
+`;
+
             const sections = grouped[shiftTitle];
 
             for (const section in sections) {
