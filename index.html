@@ -212,8 +212,9 @@ function renderGroupedRota(data, isSearch = false) {
       html += `<h4 class="mt-4">${day}</h4><div class="row g-3 mb-4">`;
       groupedByDay[day].forEach(row => {
         html += `
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm p-3">
+  <div class="col-12 col-md-6">
+    <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role))}">
+
               <h5>${row.role}</h5>
               <p><strong>Time:</strong> ${row.time}</p>
               <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
