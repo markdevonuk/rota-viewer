@@ -47,7 +47,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V6.01</h2>
+    <h2>Event Rota V6.02</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -85,7 +85,7 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbznZUJRug_6zYSUcMx_f-VSRkJexYGOOvtqKgT1Z0YCnvUddMIa_PwdidCThpnCxlqmeg/exec";
+    const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
     let rotaCache = [];
 
     async function preloadShifts() {
@@ -95,23 +95,27 @@
 
     function loadRota() {
       const daySelect = document.getElementById("daySelect");
-      const day = daySelect.value;
-      localStorage.setItem("selectedDay", day);
+      const selectedDay = daySelect.value;
+      localStorage.setItem("selectedDay", selectedDay);
 
       document.getElementById("rotaContent").innerHTML =
         '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
-      fetch(`${API_URL}?day=${encodeURIComponent(day)}`)
-        .then(response => response.json())
-        .then(renderRota)
-        .catch(err => {
-          console.error("Error loading rota:", err);
-          document.getElementById("rotaContent").innerHTML = "<p>Error loading rota data.</p>";
-        });
+      const filtered = rotaCache.filter(entry => entry["Day"] === selectedDay)
+        .map(entry => ({
+          shiftTitle: entry["Shift Title"] || "",
+          section: entry["Team"] || "General",
+          role: entry["Role"] || "",
+          time: entry["Time"] || "",
+          crew1: entry["Crew 1"] || "",
+          crew2: entry["Crew 2"] || ""
+        }));
+
+      renderRota(filtered);
     }
 
     function renderRota(data) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      if (!data || data.length === 0) {
         document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
         return;
       }
@@ -224,7 +228,7 @@
       if (!matches.length) {
         document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
       } else if (uniqueNames.length > 1) {
-        let nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
+        const nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
         document.getElementById("rotaContent").innerHTML = `
           <p>Multiple people matched your search. Please choose:</p>
           <ul>${nameList}</ul>
@@ -252,11 +256,6 @@
     }
 
     function displaySearchResults(data, name) {
-      if (!data || data.length === 0) {
-        document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
-        return;
-      }
-
       const grouped = {};
       data.forEach(row => {
         const day = row.day;
