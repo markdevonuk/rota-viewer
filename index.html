@@ -13,6 +13,7 @@
     .spinner { display: flex; justify-content: center; padding: 2rem; }
     .card { border-radius: 0.75rem; }
     .card p { font-size: 0.95rem; }
+
     .card-leadership { background-color: #e7f3ff; }
     .card-vehicle { background-color: #f0f0f0; }
     .card-responders { background-color: #e8fbe8; }
@@ -20,6 +21,7 @@
     .card-makeready { background-color: #fefce8; }
     .card-static { background-color: #ffe4e1; }
     .card-stage { background-color: #f0f8ff; }
+
     .card-duty-leader {
       border-left: 5px solid gold;
       background-color: #fffbe6;
@@ -37,17 +39,23 @@
       font-size: 0.75rem;
       border-bottom-right-radius: 0.5rem;
     }
+
     .badge-early { background-color: #0d6efd; color: #fff; }
     .badge-late { background-color: #6f42c1; color: #fff; }
     .badge-night { background-color: #212529; color: #fff; }
+
     .section-block { margin-bottom: 2rem; }
-    #dataStatus { font-size: 0.9rem; margin-top: 1rem; color: #666; }
+
+    #dataStatus {
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      color: #666;
+    }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <h2>Event Rota V1.9</h2>
+    <h2>Event Rota V1.0</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -66,7 +74,13 @@
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
-      <option selected disabled>Loading days...</option>
+      <option>Tuesday</option>
+      <option>Wednesday</option>
+      <option>Thursday</option>
+      <option>Friday</option>
+      <option>Saturday</option>
+      <option>Sunday</option>
+      <option>Monday</option>
     </select>
 
     <div id="rotaContent">
@@ -81,17 +95,95 @@
       <button class="btn btn-outline-secondary" onclick="forceReloadRota()">Reload Rota Data</button>
       <div id="dataStatus"></div>
     </div>
-
+    <!-- Toast Notification -->
     <div id="toast" class="toast align-items-center text-bg-primary border-0 position-fixed bottom-0 end-0 m-4" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 9999;">
       <div class="d-flex">
         <div class="toast-body" id="toastMessage">Rota updated</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
-  </div>
+
+  </div> <!-- Close container -->
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwfyXmuCZQFh18MninGmcm5TWHc2Lh2JTvQkPNrB41oDNvxJ6KwuJ1IN0VRlZakc7O9Mw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbznZUJRug_6zYSUcMx_f-VSRkJexYGOOvtqKgT1Z0YCnvUddMIa_PwdidCThpnCxlqmeg/exec";
+let rotaCache = [];
+
+function saveCacheToStorage() {
+  localStorage.setItem("rotaCache", JSON.stringify(rotaCache));
+  localStorage.setItem("rotaCacheTimestamp", Date.now());
+}
+
+function loadCacheFromStorage() {
+  const cached = localStorage.getItem("rotaCache");
+  return cached ? JSON.parse(cached) : [];
+}
+
+function isCacheStale(minutes = 15) {
+  const lastUpdate = parseInt(localStorage.getItem("rotaCacheTimestamp") || "0");
+  return (Date.now() - lastUpdate) > minutes * 60 * 1000;
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  try {
+    const date = new Date(value);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return value;
+  }
+}
+
+function getSectionFromRole(role) {
+  const clean = role.toLowerCase();
+  if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
+  if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
+  if (/^romeo/i.test(role)) return "Responders";
+  if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
+  if (/^stages/i.test(role)) return "Stage Medical";
+  if (/^medcomms/i.test(role)) return "Medcomms Team";
+  if (/^make/i.test(role)) return "Make Ready Team";
+  return "General";
+}
+
+async function preloadShifts(force = false) {
+  rotaCache = loadCacheFromStorage();
+  const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
+
+  if (usingCache) {
+    updateStatus("Loaded from local cache");
+    showToast("Loaded rota from local cache ✅");
+    return;
+  }
+
+  try {
+    const res = await fetch(${API_URL}?action=loadAllShifts);
+    const rawData = await res.json();
+
+    rotaCache = rawData.map(entry => {
+      const role = (entry["Location"] || "").trim();
+      const start = formatTime(entry["Start"]);
+      const finish = formatTime(entry["Finish"]);
+
+      return {
+        shiftTitle: (entry["Section"] || "").trim(),
+        section: getSectionFromRole(role),
+        role,
+        time: ${start} - ${finish},
+        crew1: (entry["Crew 1"] || "").trim(),
+        crew2: (entry["Crew 2"] || "").trim(),
+        day: (entry["Day"] || "").trim()
+      };
+    });
+
+    saveCacheToStorage();
+    updateStatus("Live data loaded");
+    showToast("✅ Live rota updated!");
+  } catch (err) {
+    updateStatus("⚠️ Using cached rota");
+    showToast("⚠️ Offline: using cached rota");
+  }
+}
 
 function updateStatus(msg) {
   document.getElementById("dataStatus").textContent = msg;
@@ -101,58 +193,30 @@ function showToast(message) {
   const toastEl = document.getElementById("toast");
   const toastMsg = document.getElementById("toastMessage");
   toastMsg.textContent = message;
+
   const toast = new bootstrap.Toast(toastEl);
   toast.show();
 }
 
-async function preloadDays() {
-  try {
-    const res = await fetch(`${API_URL}?action=listDays`);
-    const text = await res.text();
-    const days = JSON.parse(text);
-
-    const daySelect = document.getElementById("daySelect");
-    daySelect.innerHTML = days.map(day => `<option>${day}</option>`).join("");
-
-    const savedDay = localStorage.getItem("selectedDay");
-    if (savedDay && days.includes(savedDay)) {
-      daySelect.value = savedDay;
-    } else {
-      daySelect.selectedIndex = 0;
-    }
-
-    loadRota();
-    updateStatus(`Viewing: ${daySelect.value}`);
-  } catch (err) {
-    console.error("Error loading days", err);
-    document.getElementById("daySelect").innerHTML = `<option>Error loading days</option>`;
-    document.getElementById("rotaContent").innerHTML = `<p>Cannot load rota days. Try again later.</p>`;
-    updateStatus("⚠️ Error loading days");
-  }
+function forceReloadRota() {
+  preloadShifts(true).then(loadRota);
 }
 
-async function loadRota() {
-  const day = document.getElementById("daySelect").value;
+function loadRota() {
+  const daySelect = document.getElementById("daySelect");
+  const day = daySelect.value;
   localStorage.setItem("selectedDay", day);
 
-  document.getElementById("rotaContent").innerHTML = `
-    <div class="spinner"><div class="spinner-border" role="status">
-    <span class="visually-hidden">Loading...</span></div></div>
-  `;
+  document.getElementById("rotaContent").innerHTML =
+    '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
-  try {
-    const res = await fetch(`${API_URL}?day=${encodeURIComponent(day)}`);
-    const data = await res.json();
-    renderRota(data);
-    updateStatus(`Viewing: ${day}`);
-  } catch (e) {
-    document.getElementById("rotaContent").innerHTML = `<p>Failed to load rota. Try Reload.</p>`;
-    updateStatus("⚠️ Error loading rota");
-  }
+  const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
+
+  renderRota(dayData);
 }
 
 function renderRota(data) {
-  if (!data.length) {
+  if (!data || data.length === 0) {
     document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
     return;
   }
@@ -161,8 +225,12 @@ function renderRota(data) {
   data.forEach(row => {
     const shift = (row.shiftTitle || "").trim();
     const section = (row.section || "").trim();
+
+    if (!shift || shift.toLowerCase() === "other") return;
+
     if (!grouped[shift]) grouped[shift] = {};
     if (!grouped[shift][section]) grouped[shift][section] = [];
+
     grouped[shift][section].push(row);
   });
 
@@ -175,83 +243,167 @@ function renderRota(data) {
     else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
     else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
 
+    const shiftLabel = ${shiftTitle} Shifts;
     const anchorId = badgeClass ? badgeClass.replace('badge-', '') : shiftTitleLower.replace(/\s+/g, '-');
 
-    html += `
+    html += 
       <div class="mb-3" id="${anchorId}">
-        <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shiftTitle} Shifts</span>
+        <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shiftLabel}</span>
       </div>
-    `;
+    ;
 
     const sections = grouped[shiftTitle];
     for (const section in sections) {
       const rows = sections[section];
+      if (!rows.length) continue;
 
-      html += `<div class="section-block"><h5>${section}</h5><div class="row g-2">`;
-      html += rows.map(row => createCard(row)).join("");
-      html += `</div></div>`;
+      html += <div class="section-block"><h5>${section}</h5><div class="row g-2">;
+
+      html += rows.map(row => {
+        const sectionLower = section.toLowerCase();
+        const roleLower = (row.role || "").toLowerCase();
+
+        const cardClass =
+          sectionLower.includes("leadership") ? "card-leadership" :
+          sectionLower.includes("vehicles") ? "card-vehicle" :
+          sectionLower.includes("responders") ? "card-responders" :
+          sectionLower.includes("static medical points") ? "card-static" :
+          sectionLower.includes("stage medical") ? "card-stage" :
+          sectionLower.includes("medcomms team") ? "card-medcomms" :
+          sectionLower.includes("make ready") ? "card-makeready" :
+          "";
+
+        const isDutyLeader = roleLower.includes("duty team leader");
+        const fullCardClass = card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""};
+
+        return 
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="${fullCardClass}">
+              <div class="card-body p-3">
+                <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+              </div>
+            </div>
+          </div>
+        ;
+      }).join("");
+
+      html += </div></div>;
     }
   }
 
   document.getElementById("rotaContent").innerHTML = html;
 }
 
-function createCard(row) {
-  const sectionLower = (row.section || "").toLowerCase();
-  const roleLower = (row.role || "").toLowerCase();
-  const cardClass =
-    sectionLower.includes("leadership") ? "card-leadership" :
-    sectionLower.includes("vehicles") ? "card-vehicle" :
-    sectionLower.includes("responders") ? "card-responders" :
-    sectionLower.includes("static medical points") ? "card-static" :
-    sectionLower.includes("stage medical") ? "card-stage" :
-    sectionLower.includes("medcomms team") ? "card-medcomms" :
-    sectionLower.includes("make ready") ? "card-makeready" :
-    "";
-
-  const isDutyLeader = roleLower.includes("duty team leader");
-  const fullCardClass = `card h-100 shadow-sm ${cardClass} ${isDutyLeader ? "card-duty-leader" : ""}`;
-
-  return `
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="${fullCardClass}">
-        <div class="card-body p-3">
-          <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
-          <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
-          <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
-          <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-async function runSearch() {
-  const query = document.getElementById("searchInput").value.trim();
+function runSearch() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
   if (!query) return alert("Please enter a name to search.");
 
-  document.getElementById("rotaContent").innerHTML = `<div class="spinner"><div class="spinner-border" role="status"></div></div>`;
+  const matches = [];
+  const foundNames = new Set();
 
-  try {
-    const res = await fetch(`${API_URL}?search=${encodeURIComponent(query)}`);
-    const data = await res.json();
-    if (!data.matches.length) {
-      document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
-      return;
+  rotaCache.forEach(entry => {
+    const crew1 = entry.crew1.toLowerCase();
+    const crew2 = entry.crew2.toLowerCase();
+
+    if (crew1.includes(query) || crew2.includes(query)) {
+      matches.push(entry);
+      if (crew1.includes(query)) foundNames.add(entry.crew1);
+      if (crew2.includes(query)) foundNames.add(entry.crew2);
     }
-    renderRota(data.matches);
-    updateStatus(`Results for: ${query}`);
-  } catch (e) {
-    document.getElementById("rotaContent").innerHTML = `<p>Search failed. Try again.</p>`;
+  });
+
+  const uniqueNames = Array.from(foundNames);
+  if (!matches.length) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+  } else if (uniqueNames.length > 1) {
+    const nameList = uniqueNames.map(n => <li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>).join("");
+    document.getElementById("rotaContent").innerHTML = 
+      <p>Multiple people matched your search. Please choose:</p>
+      <ul>${nameList}</ul>
+    ;
+  } else {
+    displaySearchResults(matches, uniqueNames[0]);
   }
 }
 
-function forceReloadRota() {
-  preloadDays();
-  showToast("Reloaded rota data ✅");
+function filterByExactName(name) {
+  const matches = rotaCache.filter(entry =>
+    entry.crew1.toLowerCase() === name.toLowerCase() ||
+    entry.crew2.toLowerCase() === name.toLowerCase()
+  );
+  displaySearchResults(matches, name);
 }
 
-window.onload = preloadDays;
+function displaySearchResults(data, name) {
+  if (!data || data.length === 0) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
+    return;
+  }
+
+  const grouped = {};
+  data.forEach(row => {
+    const day = row.day;
+    const shift = (row.shiftTitle || "").trim();
+    const section = (row.section || "").trim();
+
+    if (!grouped[day]) grouped[day] = {};
+    if (!grouped[day][shift]) grouped[day][shift] = {};
+    if (!grouped[day][shift][section]) grouped[day][shift][section] = [];
+
+    grouped[day][shift][section].push(row);
+  });
+
+  let html = <h4>Shifts for <strong>${name}</strong></h4>;
+  for (const day in grouped) {
+    html += <h5 class="mt-4">${day}</h5>;
+
+    for (const shift in grouped[day]) {
+      const shiftTitleLower = shift.toLowerCase();
+      let badgeClass = "";
+      if (shiftTitleLower.includes("early")) badgeClass = "badge-early";
+      else if (shiftTitleLower.includes("late")) badgeClass = "badge-late";
+      else if (shiftTitleLower.includes("night")) badgeClass = "badge-night";
+
+      html += 
+        <div class="mb-3">
+          <span class="badge ${badgeClass || 'bg-secondary'} fs-5 px-3 py-2 rounded-pill">${shift} Shifts</span>
+        </div>
+      ;
+
+      for (const section in grouped[day][shift]) {
+        const rows = grouped[day][shift][section];
+        html += <div class="section-block"><h5>${section}</h5><div class="row g-2">;
+
+        html += rows.map(row => 
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body p-3">
+                <p class="mb-1"><strong>Role:</strong> ${row.role || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-1"><strong>Time:</strong> ${row.time || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-1"><strong>Crew 1:</strong> ${row.crew1 || "<span class='text-muted'>–</span>"}</p>
+                <p class="mb-0"><strong>Crew 2:</strong> ${row.crew2 || "<span class='text-muted'>–</span>"}</p>
+              </div>
+            </div>
+          </div>
+        ).join("");
+
+        html += </div></div>;
+      }
+    }
+  }
+
+  document.getElementById("rotaContent").innerHTML = html;
+}
+
+window.onload = async () => {
+  await preloadShifts();
+  const savedDay = localStorage.getItem("selectedDay");
+  if (savedDay) document.getElementById("daySelect").value = savedDay;
+  loadRota();
+};
 </script>
 </body>
 </html>
