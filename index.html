@@ -8,11 +8,12 @@
   <style>
     body { padding: 1rem; background-color: #f9f9f9; }
     h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
+    .shift-header { margin-top: 3rem; text-align: center; }
     .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
     .card { border-radius: 0.75rem; }
-    .badge-early { background-color: #0d6efd; color: #fff; }
-    .badge-late { background-color: #6f42c1; color: #fff; }
-    .badge-night { background-color: #212529; color: #fff; }
+    .badge-early { background-color: #0d6efd; color: #fff; font-size: 1rem; }
+    .badge-late { background-color: #6f42c1; color: #fff; font-size: 1rem; }
+    .badge-night { background-color: #212529; color: #fff; font-size: 1rem; }
     .card-leadership { background-color: #e7f3ff; }
     .card-vehicles { background-color: #f0f0f0; }
     .card-responders { background-color: #e8fbe8; }
@@ -26,7 +27,7 @@
 <body>
 
 <div class="container">
-  <h2>Event Rota 11</h2>
+  <h2>Event Rota</h2>
 
   <div class="mb-4">
     <label for="searchInput" class="form-label">Search by Crew Name:</label>
@@ -55,7 +56,8 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"; // <-- Change this!
+// --- Setup ---
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- CHANGE THIS
 
 let rotaCache = [];
 let availableDays = [];
@@ -68,6 +70,21 @@ function normalizeDay(dayValue) {
     if (clean.includes(day.toLowerCase())) return day;
   }
   return "";
+}
+
+function getShiftType(shiftTitle) {
+  const clean = (shiftTitle || "").toLowerCase();
+  if (clean.includes("early")) return "Early";
+  if (clean.includes("late")) return "Late";
+  if (clean.includes("night")) return "Night";
+  return "Other";
+}
+
+function getBadgeClass(shiftType) {
+  if (shiftType === "Early") return "badge-early";
+  if (shiftType === "Late") return "badge-late";
+  if (shiftType === "Night") return "badge-night";
+  return "bg-secondary";
 }
 
 function getSectionFromRole(role) {
@@ -94,14 +111,7 @@ function getCardClass(section) {
   return "";
 }
 
-function getShiftBadge(shiftTitle) {
-  const clean = shiftTitle.toLowerCase();
-  if (clean.includes("early")) return `<span class="badge badge-early">Early Shift</span>`;
-  if (clean.includes("late")) return `<span class="badge badge-late">Late Shift</span>`;
-  if (clean.includes("night")) return `<span class="badge badge-night">Night Shift</span>`;
-  return "";
-}
-
+// --- Loading ---
 function saveCacheToStorage() {
   localStorage.setItem("rotaCache", JSON.stringify(rotaCache));
   localStorage.setItem("rotaCacheTimestamp", Date.now());
@@ -164,6 +174,7 @@ function updateAvailableDays() {
   }
 }
 
+// --- Rendering ---
 function loadRota() {
   const daySelect = document.getElementById("daySelect");
   const day = daySelect.value;
@@ -182,37 +193,59 @@ function renderGroupedRota(data) {
     return;
   }
 
-  const sections = {};
+  const groupedByShift = {
+    Early: [],
+    Late: [],
+    Night: [],
+    Other: []
+  };
 
   data.forEach(entry => {
-    const section = getSectionFromRole(entry.role);
-    if (!sections[section]) sections[section] = [];
-    sections[section].push(entry);
+    const shiftType = getShiftType(entry.shiftTitle);
+    groupedByShift[shiftType].push(entry);
   });
 
   let html = "";
 
-  for (const section in sections) {
-    const exampleShift = sections[section][0];
-    const badge = getShiftBadge(exampleShift.shiftTitle || "");
+  for (const shiftType of ["Early", "Late", "Night", "Other"]) {
+    if (!groupedByShift[shiftType].length) continue;
 
-    html += `<div class="section-header">${section} ${badge}</div><div class="row g-3 mb-4">`;
-    html += sections[section].map(row => `
-      <div class="col-12 col-md-6">
-        <div class="card shadow-sm p-3 ${getCardClass(section)}">
-          <h5>${row.role}</h5>
-          <p><strong>Time:</strong> ${row.time}</p>
-          <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-          <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
-        </div>
+    html += `
+      <div class="shift-header my-4">
+        <span class="badge ${getBadgeClass(shiftType)} p-2">${shiftType} Shifts</span>
       </div>
-    `).join("");
-    html += `</div>`;
+    `;
+
+    const groupedBySection = {};
+
+    groupedByShift[shiftType].forEach(entry => {
+      const section = getSectionFromRole(entry.role);
+      if (!groupedBySection[section]) groupedBySection[section] = [];
+      groupedBySection[section].push(entry);
+    });
+
+    for (const section in groupedBySection) {
+      html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
+
+      html += groupedBySection[section].map(row => `
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm p-3 ${getCardClass(section)}">
+            <h5>${row.role}</h5>
+            <p><strong>Time:</strong> ${row.time}</p>
+            <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+            <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+          </div>
+        </div>
+      `).join("");
+
+      html += `</div>`;
+    }
   }
 
   document.getElementById("rotaContent").innerHTML = html;
 }
 
+// --- Search ---
 function runSearch() {
   const query = document.getElementById("searchInput").value.trim().toLowerCase();
   if (!query) return alert("Please enter a name to search.");
@@ -251,6 +284,7 @@ function filterByExactName(name) {
   renderGroupedRota(results);
 }
 
+// --- Utilities ---
 function updateStatus(msg) {
   document.getElementById("dataStatus").textContent = msg;
 }
@@ -266,6 +300,7 @@ function clearRotaCache() {
   }
 }
 
+// --- Init ---
 window.onload = async () => {
   await preloadShifts();
   loadRota();
@@ -274,5 +309,3 @@ window.onload = async () => {
 
 </body>
 </html>
-
-
