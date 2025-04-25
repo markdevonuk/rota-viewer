@@ -6,23 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    html { scroll-behavior: smooth; }
     body { padding: 1rem; background-color: #f9f9f9; }
     h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
-    .spinner { display: flex; justify-content: center; padding: 2rem; }
     .card { border-radius: 0.75rem; }
+    .spinner { display: flex; justify-content: center; padding: 2rem; }
     .section-block { margin-bottom: 2rem; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Event Rota</h2>
+  <h2>Event Rota v2</h2>
 
   <div class="mb-4">
-    <label for="searchInput" class="form-label">Search by name:</label>
+    <label for="searchInput" class="form-label">Search by Crew Name:</label>
     <div class="input-group mb-3">
-      <input type="text" id="searchInput" class="form-control" placeholder="Enter full or partial name...">
+      <input type="text" id="searchInput" class="form-control" placeholder="Enter name...">
       <button class="btn btn-primary" onclick="runSearch()">Search</button>
     </div>
 
@@ -39,14 +38,15 @@
   </div>
 
   <div class="mt-5 text-center">
-    <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota Data</button>
+    <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
     <button class="btn btn-danger" onclick="clearRotaCache()">Clear Cache</button>
     <div id="dataStatus" class="mt-2" style="font-size: 0.9rem; color: gray;"></div>
   </div>
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // Update with your real URL
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Change this to your URL
+
 let rotaCache = [];
 let availableDays = [];
 
@@ -81,7 +81,7 @@ async function preloadShifts(force = false) {
 
   if (usingCache) {
     updateAvailableDays();
-    updateStatus("Loaded from local cache");
+    updateStatus("Loaded from cache");
     return;
   }
 
@@ -89,25 +89,20 @@ async function preloadShifts(force = false) {
     const res = await fetch(`${API_URL}?action=loadAllShifts`);
     const rawData = await res.json();
 
-    rotaCache = rawData.map(entry => {
-      const role = (entry["Location"] || "").trim();
-      const start = entry["Start"];
-      const finish = entry["Finish"];
-      return {
-        shiftTitle: (entry["Section"] || "").trim(),
-        role,
-        time: `${start} - ${finish}`,
-        crew1: (entry["Crew 1"] || "").trim(),
-        crew2: (entry["Crew 2"] || "").trim(),
-        day: normalizeDay(entry["Day"])
-      };
-    });
+    rotaCache = rawData.map(entry => ({
+      shiftTitle: (entry["Section"] || "").trim(),
+      role: (entry["Location"] || "").trim(),
+      time: `${entry["Start"]} - ${entry["Finish"]}`,
+      crew1: (entry["Crew 1"] || "").trim(),
+      crew2: (entry["Crew 2"] || "").trim(),
+      day: normalizeDay(entry["Day"])
+    }));
 
     saveCacheToStorage();
     updateAvailableDays();
     updateStatus("Live rota loaded");
   } catch (err) {
-    updateStatus("⚠️ Using cached rota (offline)");
+    updateStatus("⚠️ Using cached rota");
   }
 }
 
@@ -141,7 +136,7 @@ function loadRota() {
 
 function renderRota(data) {
   if (!data.length) {
-    document.getElementById("rotaContent").innerHTML = "<p>No rota found for this day.</p>";
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
     return;
   }
 
@@ -167,16 +162,39 @@ function runSearch() {
   const query = document.getElementById("searchInput").value.trim().toLowerCase();
   if (!query) return alert("Please enter a name to search.");
 
-  const matches = rotaCache.filter(entry =>
-    entry.crew1.toLowerCase().includes(query) ||
-    entry.crew2.toLowerCase().includes(query)
-  );
+  const matches = [];
+  const foundNames = new Set();
+
+  rotaCache.forEach(entry => {
+    if (entry.crew1.toLowerCase().includes(query)) foundNames.add(entry.crew1.trim());
+    if (entry.crew2.toLowerCase().includes(query)) foundNames.add(entry.crew2.trim());
+    if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
+      matches.push(entry);
+    }
+  });
+
+  const uniqueNames = Array.from(foundNames);
 
   if (!matches.length) {
     document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+  } else if (uniqueNames.length > 1) {
+    const nameList = uniqueNames.map(name => `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`).join("");
+    document.getElementById("rotaContent").innerHTML = `
+      <p>Multiple matches found. Please choose:</p>
+      <ul>${nameList}</ul>
+    `;
   } else {
-    renderRota(matches);
+    filterByExactName(uniqueNames[0]);
   }
+}
+
+function filterByExactName(name) {
+  const results = rotaCache.filter(entry =>
+    entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() ||
+    entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+  );
+
+  renderRota(results);
 }
 
 function updateStatus(msg) {
@@ -188,7 +206,7 @@ function forceReloadRota() {
 }
 
 function clearRotaCache() {
-  if (confirm("Clear rota cache and reload?")) {
+  if (confirm("Clear cache and reload?")) {
     localStorage.clear();
     location.reload();
   }
@@ -202,4 +220,3 @@ window.onload = async () => {
 
 </body>
 </html>
-
