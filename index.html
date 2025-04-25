@@ -6,33 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    html {
-      scroll-behavior: smooth;
-    }
-    body {
-      padding: 1rem;
-      background-color: #f9f9f9;
-    }
-    h2 {
-      font-size: 1.8rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
-    }
-    h5 {
-      margin-top: 1rem;
-      font-weight: 600;
-    }
-    .spinner {
-      display: flex;
-      justify-content: center;
-      padding: 2rem;
-    }
-    .card {
-      border-radius: 0.75rem;
-    }
-    .card p {
-      font-size: 0.95rem;
-    }
+    html { scroll-behavior: smooth; }
+    body { padding: 1rem; background-color: #f9f9f9; }
+    h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
+    h5 { margin-top: 1rem; font-weight: 600; }
+    .spinner { display: flex; justify-content: center; padding: 2rem; }
+    .card { border-radius: 0.75rem; }
+    .card p { font-size: 0.95rem; }
 
     .card-leadership { background-color: #e7f3ff; }
     .card-vehicle { background-color: #f0f0f0; }
@@ -62,14 +42,12 @@
     .badge-late { background-color: #6f42c1; color: #fff; }
     .badge-night { background-color: #212529; color: #fff; }
 
-    .section-block {
-      margin-bottom: 2rem;
-    }
+    .section-block { margin-bottom: 2rem; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V5.1</h2>
+    <h2>Event Rota V6</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -107,7 +85,13 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwE430qqrp7NXWUz5t8ZradaBV70w74e3TsfWQv7mtIlo46K7WtzqWBxQMSGUYcaTO4Yg/exec"; // Replace with your own URL
+    const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
+    let rotaCache = [];
+
+    async function preloadShifts() {
+      const res = await fetch(`${API_URL}?action=loadAllShifts`);
+      rotaCache = await res.json();
+    }
 
     function loadRota() {
       const daySelect = document.getElementById("daySelect");
@@ -210,44 +194,61 @@
     }
 
     function runSearch() {
-      const query = document.getElementById("searchInput").value.trim();
+      const query = document.getElementById("searchInput").value.trim().toLowerCase();
       if (!query) return alert("Please enter a name to search.");
 
-      document.getElementById("rotaContent").innerHTML =
-        '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+      const matches = [];
+      const foundNames = new Set();
 
-      fetch(`${API_URL}?search=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(res => {
-          const { matches, names } = res;
+      rotaCache.forEach(entry => {
+        const crew1 = (entry["Crew 1"] || "").toString();
+        const crew2 = (entry["Crew 2"] || "").toString();
 
-          if (!matches.length) {
-            document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
-            return;
-          }
+        if (crew1.toLowerCase().includes(query) || crew2.toLowerCase().includes(query)) {
+          matches.push({
+            shiftTitle: entry["Shift Title"] || "",
+            section: entry["Team"] || "General",
+            role: entry["Role"] || "",
+            time: entry["Time"] || "",
+            crew1,
+            crew2,
+            day: entry["Day"] || "Unknown"
+          });
 
-          const uniqueNames = names.filter((v, i, arr) => arr.indexOf(v) === i);
-          if (uniqueNames.length > 1) {
-            let nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
-            document.getElementById("rotaContent").innerHTML = `
-              <p>Multiple people matched your search. Please choose:</p>
-              <ul>${nameList}</ul>
-            `;
-          } else {
-            displaySearchResults(matches, names[0]);
-          }
-        })
-        .catch(err => {
-          console.error("Search error:", err);
-          document.getElementById("rotaContent").innerHTML = "<p>Error performing search.</p>";
-        });
+          if (crew1.toLowerCase().includes(query)) foundNames.add(crew1.trim());
+          if (crew2.toLowerCase().includes(query)) foundNames.add(crew2.trim());
+        }
+      });
+
+      const uniqueNames = Array.from(foundNames);
+      if (!matches.length) {
+        document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+      } else if (uniqueNames.length > 1) {
+        let nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
+        document.getElementById("rotaContent").innerHTML = `
+          <p>Multiple people matched your search. Please choose:</p>
+          <ul>${nameList}</ul>
+        `;
+      } else {
+        displaySearchResults(matches, uniqueNames[0]);
+      }
     }
 
     function filterByExactName(name) {
-      fetch(`${API_URL}?search=${encodeURIComponent(name)}`)
-        .then(res => res.json())
-        .then(res => displaySearchResults(res.matches, name))
-        .catch(() => document.getElementById("rotaContent").innerHTML = "<p>Error filtering by name.</p>");
+      const matches = rotaCache.filter(entry =>
+        entry["Crew 1"]?.toLowerCase() === name.toLowerCase() ||
+        entry["Crew 2"]?.toLowerCase() === name.toLowerCase()
+      ).map(entry => ({
+        shiftTitle: entry["Shift Title"] || "",
+        section: entry["Team"] || "General",
+        role: entry["Role"] || "",
+        time: entry["Time"] || "",
+        crew1: entry["Crew 1"] || "",
+        crew2: entry["Crew 2"] || "",
+        day: entry["Day"] || "Unknown"
+      }));
+
+      displaySearchResults(matches, name);
     }
 
     function displaySearchResults(data, name) {
@@ -327,7 +328,8 @@
       document.getElementById("rotaContent").innerHTML = html;
     }
 
-    window.onload = () => {
+    window.onload = async () => {
+      await preloadShifts();
       const savedDay = localStorage.getItem("selectedDay");
       if (savedDay) document.getElementById("daySelect").value = savedDay;
       loadRota();
@@ -335,4 +337,3 @@
   </script>
 </body>
 </html>
-
