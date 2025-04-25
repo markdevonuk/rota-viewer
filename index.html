@@ -9,7 +9,6 @@
     html { scroll-behavior: smooth; }
     body { padding: 1rem; background-color: #f9f9f9; }
     h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
-    h5 { margin-top: 1rem; font-weight: 600; }
     .spinner { display: flex; justify-content: center; padding: 2rem; }
     .card { border-radius: 0.75rem; }
     .section-block { margin-bottom: 2rem; }
@@ -18,9 +17,15 @@
 <body>
 
 <div class="container">
-  <h2>Event Rota V11</h2>
+  <h2>Event Rota</h2>
 
   <div class="mb-4">
+    <label for="searchInput" class="form-label">Search by name:</label>
+    <div class="input-group mb-3">
+      <input type="text" id="searchInput" class="form-control" placeholder="Enter full or partial name...">
+      <button class="btn btn-primary" onclick="runSearch()">Search</button>
+    </div>
+
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select" onchange="loadRota()"></select>
   </div>
@@ -41,15 +46,13 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Insert your real URL
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // Update with your real URL
 let rotaCache = [];
 let availableDays = [];
 
 function normalizeDay(dayValue) {
   if (!dayValue) return "";
-
   const clean = dayValue.trim().toLowerCase();
-
   const daysOfWeek = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
   for (const day of daysOfWeek) {
     if (clean.includes(day.toLowerCase())) return day;
@@ -133,7 +136,6 @@ function loadRota() {
     '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
   const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
-
   renderRota(dayData);
 }
 
@@ -161,6 +163,22 @@ function renderRota(data) {
   document.getElementById("rotaContent").innerHTML = html;
 }
 
+function runSearch() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  if (!query) return alert("Please enter a name to search.");
+
+  const matches = rotaCache.filter(entry =>
+    entry.crew1.toLowerCase().includes(query) ||
+    entry.crew2.toLowerCase().includes(query)
+  );
+
+  if (!matches.length) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+  } else {
+    renderRota(matches);
+  }
+}
+
 function updateStatus(msg) {
   document.getElementById("dataStatus").textContent = msg;
 }
@@ -184,3 +202,4 @@ window.onload = async () => {
 
 </body>
 </html>
+
