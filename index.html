@@ -55,7 +55,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V1.5</h2>
+    <h2>Event Rota V1.6</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -115,20 +115,31 @@ function showToast(message) {
 }
 
 async function preloadDays() {
-  const res = await fetch(`${API_URL}?action=listDays`);
-  const days = await res.json();
-  const daySelect = document.getElementById("daySelect");
-  daySelect.innerHTML = days.map(day => `<option>${day}</option>`).join("");
+  try {
+    const res = await fetch(`${API_URL}?action=listDays`);
+    const text = await res.text();
+    const days = JSON.parse(text);
 
-  const savedDay = localStorage.getItem("selectedDay");
-  if (savedDay && days.includes(savedDay)) {
-    daySelect.value = savedDay;
-  } else {
-    daySelect.selectedIndex = 0;
+    const daySelect = document.getElementById("daySelect");
+    daySelect.innerHTML = days.map(day => `<option>${day}</option>`).join("");
+
+    const savedDay = localStorage.getItem("selectedDay");
+    if (savedDay && days.includes(savedDay)) {
+      daySelect.value = savedDay;
+    } else {
+      daySelect.selectedIndex = 0;
+    }
+
+    loadRota();
+    updateStatus(`Viewing: ${daySelect.value}`);
+  } catch (err) {
+    console.error("Error loading days", err);
+    document.getElementById("daySelect").innerHTML = `<option>Error loading days</option>`;
+    document.getElementById("rotaContent").innerHTML = `<p>Cannot load rota days. Try again later.</p>`;
+    updateStatus("⚠️ Error loading days");
   }
-
-  loadRota();
 }
+
 
 async function loadRota() {
   const day = document.getElementById("daySelect").value;
