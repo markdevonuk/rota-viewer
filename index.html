@@ -27,8 +27,16 @@
 <body>
 
 <div class="container">
-  <h2>Event Rota</h2>
+  <h2>Event Rota V12</h2>
 
+  <!-- Jump Links -->
+  <div class="mb-4 text-center">
+    <a href="#early" class="me-2">Early</a> |
+    <a href="#late" class="mx-2">Late</a> |
+    <a href="#night" class="ms-2">Night</a>
+  </div>
+
+  <!-- Search and Select -->
   <div class="mb-4">
     <label for="searchInput" class="form-label">Search by Crew Name:</label>
     <div class="input-group mb-3">
@@ -40,13 +48,7 @@
     <select id="daySelect" class="form-select" onchange="loadRota()"></select>
   </div>
 
-  <div id="rotaContent">
-    <div class="spinner">
-      <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
-  </div>
+  <div id="rotaContent"></div>
 
   <div class="mt-5 text-center">
     <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
@@ -56,8 +58,8 @@
 </div>
 
 <script>
-// --- Setup ---
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- CHANGE THIS
+// Config
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Change this
 
 let rotaCache = [];
 let availableDays = [];
@@ -111,7 +113,7 @@ function getCardClass(section) {
   return "";
 }
 
-// --- Loading ---
+// Load and Cache
 function saveCacheToStorage() {
   localStorage.setItem("rotaCache", JSON.stringify(rotaCache));
   localStorage.setItem("rotaCacheTimestamp", Date.now());
@@ -174,7 +176,7 @@ function updateAvailableDays() {
   }
 }
 
-// --- Rendering ---
+// Render
 function loadRota() {
   const daySelect = document.getElementById("daySelect");
   const day = daySelect.value;
@@ -184,26 +186,35 @@ function loadRota() {
     '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
   const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
-  renderGroupedRota(dayData);
+  renderGroupedRota(dayData, false);
 }
 
-function renderGroupedRota(data) {
+function renderGroupedRota(data, isSearch = false) {
   if (!data.length) {
     document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
     return;
   }
 
-  const groupedByShift = {
-    Early: [],
-    Late: [],
-    Night: [],
-    Other: []
-  };
+  if (isSearch) {
+    let html = `<div class="row g-3 mb-4">`;
+    html += data.map(row => `
+      <div class="col-12 col-md-6">
+        <div class="card shadow-sm p-3">
+          <h5>${row.role}</h5>
+          <p><strong>Time:</strong> ${row.time}</p>
+          <p><strong>Day:</strong> ${row.day}</p>
+          <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+          <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+        </div>
+      </div>
+    `).join("");
+    html += `</div>`;
+    document.getElementById("rotaContent").innerHTML = html;
+    return;
+  }
 
-  data.forEach(entry => {
-    const shiftType = getShiftType(entry.shiftTitle);
-    groupedByShift[shiftType].push(entry);
-  });
+  const groupedByShift = { Early: [], Late: [], Night: [], Other: [] };
+  data.forEach(entry => groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
 
   let html = "";
 
@@ -211,13 +222,12 @@ function renderGroupedRota(data) {
     if (!groupedByShift[shiftType].length) continue;
 
     html += `
-      <div class="shift-header my-4">
+      <div id="${shiftType.toLowerCase()}" class="shift-header my-4">
         <span class="badge ${getBadgeClass(shiftType)} p-2">${shiftType} Shifts</span>
       </div>
     `;
 
     const groupedBySection = {};
-
     groupedByShift[shiftType].forEach(entry => {
       const section = getSectionFromRole(entry.role);
       if (!groupedBySection[section]) groupedBySection[section] = [];
@@ -226,7 +236,6 @@ function renderGroupedRota(data) {
 
     for (const section in groupedBySection) {
       html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
-
       html += groupedBySection[section].map(row => `
         <div class="col-12 col-md-6">
           <div class="card shadow-sm p-3 ${getCardClass(section)}">
@@ -237,7 +246,6 @@ function renderGroupedRota(data) {
           </div>
         </div>
       `).join("");
-
       html += `</div>`;
     }
   }
@@ -245,48 +253,20 @@ function renderGroupedRota(data) {
   document.getElementById("rotaContent").innerHTML = html;
 }
 
-// --- Search ---
+// Search
 function runSearch() {
   const query = document.getElementById("searchInput").value.trim().toLowerCase();
   if (!query) return alert("Please enter a name to search.");
 
-  const matches = [];
-  const foundNames = new Set();
-
-  rotaCache.forEach(entry => {
-    if (entry.crew1.toLowerCase().includes(query)) foundNames.add(entry.crew1.trim());
-    if (entry.crew2.toLowerCase().includes(query)) foundNames.add(entry.crew2.trim());
-    if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
-      matches.push(entry);
-    }
-  });
-
-  const uniqueNames = Array.from(foundNames);
+  const matches = rotaCache.filter(entry =>
+    entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)
+  );
 
   if (!matches.length) {
     document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
-  } else if (uniqueNames.length > 1) {
-    const nameList = uniqueNames.map(name => `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`).join("");
-    document.getElementById("rotaContent").innerHTML = `
-      <p>Multiple matches found. Please choose:</p>
-      <ul>${nameList}</ul>
-    `;
   } else {
-    filterByExactName(uniqueNames[0]);
+    renderGroupedRota(matches, true);
   }
-}
-
-function filterByExactName(name) {
-  const results = rotaCache.filter(entry =>
-    entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() ||
-    entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
-  );
-  renderGroupedRota(results);
-}
-
-// --- Utilities ---
-function updateStatus(msg) {
-  document.getElementById("dataStatus").textContent = msg;
 }
 
 function forceReloadRota() {
@@ -300,7 +280,11 @@ function clearRotaCache() {
   }
 }
 
-// --- Init ---
+function updateStatus(msg) {
+  document.getElementById("dataStatus").textContent = msg;
+}
+
+// Init
 window.onload = async () => {
   await preloadShifts();
   loadRota();
@@ -309,3 +293,4 @@ window.onload = async () => {
 
 </body>
 </html>
+
