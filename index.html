@@ -110,7 +110,14 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbzeujchPi1wjrd4hPJj7-qddG87w7t9ObUOaOs3n-p-pymN0xM5wOiLAPQwvRANQwVzZQ/exec";
 let rotaCache = [];
 
-function normalizeDay(dayValue) {
+function clearRotaCache() {
+  if (confirm("Are you sure you want to clear the rota cache and reload?")) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+  
+  function normalizeDay(dayValue) {
   if (!dayValue) return "";
 
   const clean = dayValue.trim().toLowerCase();
