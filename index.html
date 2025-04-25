@@ -55,7 +55,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V10</h2>
+    <h2>Event Rota V10.1</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -146,14 +146,24 @@ function isCacheStale(minutes = 15) {
 }
 
 function formatTime(value) {
-  if (!value) return "";
-  try {
-    const date = new Date(value);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
+  if (value === "" || value == null) return "";
+
+  // If it's a number (Google Sheets time stored as fraction of a day)
+  if (typeof value === "number") {
+    const totalMinutes = Math.round(value * 24 * 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  }
+
+  // If it's already a string (just return it)
+  if (typeof value === "string") {
     return value;
   }
+
+  return "";
 }
+
 
 function getSectionFromRole(role) {
   const clean = role.toLowerCase();
