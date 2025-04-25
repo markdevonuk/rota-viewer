@@ -8,15 +8,22 @@
   <style>
     body { padding: 1rem; background-color: #f9f9f9; }
     h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
+    .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
     .card { border-radius: 0.75rem; }
+    .card-leadership { background-color: #e7f3ff; }
+    .card-vehicles { background-color: #f0f0f0; }
+    .card-responders { background-color: #e8fbe8; }
+    .card-static { background-color: #ffe4e1; }
+    .card-stage { background-color: #f0e8ff; }
+    .card-medcomms { background-color: #fff8e7; }
+    .card-makeready { background-color: #ffffe0; }
     .spinner { display: flex; justify-content: center; padding: 2rem; }
-    .section-block { margin-bottom: 2rem; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Event Rota v2</h2>
+  <h2>Event Rota AS</h2>
 
   <div class="mb-4">
     <label for="searchInput" class="form-label">Search by Crew Name:</label>
@@ -45,8 +52,7 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Change this to your URL
-
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Change to your URL
 let rotaCache = [];
 let availableDays = [];
 
@@ -57,6 +63,30 @@ function normalizeDay(dayValue) {
   for (const day of daysOfWeek) {
     if (clean.includes(day.toLowerCase())) return day;
   }
+  return "";
+}
+
+function getSectionFromRole(role) {
+  const clean = role.trim().toLowerCase();
+  if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
+  if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
+  if (/^romeo/i.test(role)) return "Responders";
+  if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
+  if (/^stages/i.test(role)) return "Stage Medical";
+  if (/^medcomms/i.test(role)) return "Medcomms Team";
+  if (/^make/i.test(role)) return "Make Ready Team";
+  return "General";
+}
+
+function getCardClass(section) {
+  const clean = section.toLowerCase();
+  if (clean.includes("leadership")) return "card-leadership";
+  if (clean.includes("vehicles")) return "card-vehicles";
+  if (clean.includes("responders")) return "card-responders";
+  if (clean.includes("static")) return "card-static";
+  if (clean.includes("stage")) return "card-stage";
+  if (clean.includes("medcomms")) return "card-medcomms";
+  if (clean.includes("make ready")) return "card-makeready";
   return "";
 }
 
@@ -131,29 +161,39 @@ function loadRota() {
     '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
   const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
-  renderRota(dayData);
+  renderGroupedRota(dayData);
 }
 
-function renderRota(data) {
+function renderGroupedRota(data) {
   if (!data.length) {
     document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
     return;
   }
 
-  let html = `<div class="row g-3">`;
+  const sections = {};
 
-  html += data.map(row => `
-    <div class="col-12 col-md-6">
-      <div class="card shadow-sm p-3">
-        <h5>${row.role}</h5>
-        <p><strong>Time:</strong> ${row.time}</p>
-        <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-        <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+  data.forEach(entry => {
+    const section = getSectionFromRole(entry.role);
+    if (!sections[section]) sections[section] = [];
+    sections[section].push(entry);
+  });
+
+  let html = "";
+
+  for (const section in sections) {
+    html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
+    html += sections[section].map(row => `
+      <div class="col-12 col-md-6">
+        <div class="card shadow-sm p-3 ${getCardClass(section)}">
+          <h5>${row.role}</h5>
+          <p><strong>Time:</strong> ${row.time}</p>
+          <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+          <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+        </div>
       </div>
-    </div>
-  `).join("");
-
-  html += `</div>`;
+    `).join("");
+    html += `</div>`;
+  }
 
   document.getElementById("rotaContent").innerHTML = html;
 }
@@ -193,8 +233,7 @@ function filterByExactName(name) {
     entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() ||
     entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
   );
-
-  renderRota(results);
+  renderGroupedRota(results);
 }
 
 function updateStatus(msg) {
@@ -220,3 +259,4 @@ window.onload = async () => {
 
 </body>
 </html>
+
