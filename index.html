@@ -13,7 +13,6 @@
     .spinner { display: flex; justify-content: center; padding: 2rem; }
     .card { border-radius: 0.75rem; }
     .card p { font-size: 0.95rem; }
-
     .card-leadership { background-color: #e7f3ff; }
     .card-vehicle { background-color: #f0f0f0; }
     .card-responders { background-color: #e8fbe8; }
@@ -21,14 +20,13 @@
     .card-makeready { background-color: #fefce8; }
     .card-static { background-color: #ffe4e1; }
     .card-stage { background-color: #f0f8ff; }
-
     .card-duty-leader {
       border-left: 5px solid gold;
       background-color: #fffbe6;
       position: relative;
     }
     .card-duty-leader::before {
-      content: "";
+      content: "⭐ Duty Team Leader";
       position: absolute;
       top: 0;
       left: 0;
@@ -39,23 +37,17 @@
       font-size: 0.75rem;
       border-bottom-right-radius: 0.5rem;
     }
-
     .badge-early { background-color: #0d6efd; color: #fff; }
     .badge-late { background-color: #6f42c1; color: #fff; }
     .badge-night { background-color: #212529; color: #fff; }
-
     .section-block { margin-bottom: 2rem; }
-
-    #dataStatus {
-      font-size: 0.9rem;
-      margin-top: 1rem;
-      color: #666;
-    }
+    #dataStatus { font-size: 0.9rem; margin-top: 1rem; color: #666; }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h2>Event Rota V1.8</h2>
+    <h2>Event Rota V1.0</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -74,7 +66,7 @@
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
-      <option selected disabled>Loading days... won't be long</option>
+      <option selected disabled>Loading days...</option>
     </select>
 
     <div id="rotaContent">
@@ -96,11 +88,10 @@
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
-
-  </div> <!-- container -->
+  </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycby9MbndSemDNznah0z8-b7A64aZcBb6mk56tzfvS_uE3bnjePfQJuv7x9XV_X_QpNo1eg/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzN1bHzo58obMbumgpEbb5GrSv-lqTo9pwYfPqjcAZe3Rb1lyQ_v5NCSBbI_V2fnO-lWw/exec";
 
 function updateStatus(msg) {
   document.getElementById("dataStatus").textContent = msg;
@@ -135,11 +126,10 @@ async function preloadDays() {
   } catch (err) {
     console.error("Error loading days", err);
     document.getElementById("daySelect").innerHTML = `<option>Error loading days</option>`;
-    document.getElementById("rotaContent").innerHTML = `<p>Ah pants.... Cannot load rota days. Try again later.</p>`;
+    document.getElementById("rotaContent").innerHTML = `<p>Cannot load rota days. Try again later.</p>`;
     updateStatus("⚠️ Error loading days");
   }
 }
-
 
 async function loadRota() {
   const day = document.getElementById("daySelect").value;
@@ -265,4 +255,5 @@ window.onload = preloadDays;
 </script>
 </body>
 </html>
+
 
