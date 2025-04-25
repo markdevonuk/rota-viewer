@@ -28,7 +28,7 @@
       position: relative;
     }
     .card-duty-leader::before {
-      content: "⭐ Duty Team Leader";
+      content: "";
       position: absolute;
       top: 0;
       left: 0;
@@ -55,7 +55,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V1.6</h2>
+    <h2>Event Rota V1.7</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -74,7 +74,7 @@
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
-      <option selected disabled>Loading days...</option>
+      <option selected disabled>Loading days... won't be long</option>
     </select>
 
     <div id="rotaContent">
@@ -100,7 +100,7 @@
   </div> <!-- container -->
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzf7DklwG6VZu8XXLqrZGfk_ouVpoa26rK6NL8Lbtcoyd_rpXWtrjscXLFbSpCnQQPCRQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzVLzOjis80h46OR2e8Lf97-F9eRmeJdAe9hTxriZwbfBedCioOJoFszfyDkco83cERAw/exec";
 
 function updateStatus(msg) {
   document.getElementById("dataStatus").textContent = msg;
@@ -135,7 +135,7 @@ async function preloadDays() {
   } catch (err) {
     console.error("Error loading days", err);
     document.getElementById("daySelect").innerHTML = `<option>Error loading days</option>`;
-    document.getElementById("rotaContent").innerHTML = `<p>Cannot load rota days. Try again later.</p>`;
+    document.getElementById("rotaContent").innerHTML = `<p>Ah pants.... Cannot load rota days. Try again later.</p>`;
     updateStatus("⚠️ Error loading days");
   }
 }
