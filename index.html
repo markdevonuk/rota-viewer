@@ -10,6 +10,9 @@
     h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
     .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
     .card { border-radius: 0.75rem; }
+    .badge-early { background-color: #0d6efd; color: #fff; }
+    .badge-late { background-color: #6f42c1; color: #fff; }
+    .badge-night { background-color: #212529; color: #fff; }
     .card-leadership { background-color: #e7f3ff; }
     .card-vehicles { background-color: #f0f0f0; }
     .card-responders { background-color: #e8fbe8; }
@@ -23,7 +26,7 @@
 <body>
 
 <div class="container">
-  <h2>Event Rota AS</h2>
+  <h2>Event Rota 11</h2>
 
   <div class="mb-4">
     <label for="searchInput" class="form-label">Search by Crew Name:</label>
@@ -52,7 +55,8 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec"; // <-- Change to your URL
+const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"; // <-- Change this!
+
 let rotaCache = [];
 let availableDays = [];
 
@@ -87,6 +91,14 @@ function getCardClass(section) {
   if (clean.includes("stage")) return "card-stage";
   if (clean.includes("medcomms")) return "card-medcomms";
   if (clean.includes("make ready")) return "card-makeready";
+  return "";
+}
+
+function getShiftBadge(shiftTitle) {
+  const clean = shiftTitle.toLowerCase();
+  if (clean.includes("early")) return `<span class="badge badge-early">Early Shift</span>`;
+  if (clean.includes("late")) return `<span class="badge badge-late">Late Shift</span>`;
+  if (clean.includes("night")) return `<span class="badge badge-night">Night Shift</span>`;
   return "";
 }
 
@@ -181,7 +193,10 @@ function renderGroupedRota(data) {
   let html = "";
 
   for (const section in sections) {
-    html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
+    const exampleShift = sections[section][0];
+    const badge = getShiftBadge(exampleShift.shiftTitle || "");
+
+    html += `<div class="section-header">${section} ${badge}</div><div class="row g-3 mb-4">`;
     html += sections[section].map(row => `
       <div class="col-12 col-md-6">
         <div class="card shadow-sm p-3 ${getCardClass(section)}">
@@ -259,4 +274,5 @@ window.onload = async () => {
 
 </body>
 </html>
+
 
