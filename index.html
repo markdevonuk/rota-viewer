@@ -55,7 +55,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Event Rota V1.2</h2>
+    <h2>Event Rota V1.3</h2>
 
     <div class="mb-4">
       <label for="searchInput" class="form-label">Search by name:</label>
@@ -74,13 +74,7 @@
 
     <label for="daySelect" class="form-label">Select Day:</label>
     <select id="daySelect" class="form-select mb-4" onchange="loadRota()">
-      <option>Tuesday</option>
-      <option>Wednesday</option>
-      <option>Thursday</option>
-      <option>Friday</option>
-      <option>Saturday</option>
-      <option>Sunday</option>
-      <option>Monday</option>
+      <!-- Days populated dynamically -->
     </select>
 
     <div id="rotaContent">
@@ -95,7 +89,7 @@
       <button class="btn btn-outline-secondary" onclick="forceReloadRota()">Reload Rota Data</button>
       <div id="dataStatus"></div>
     </div>
-    <!-- Toast Notification -->
+
     <div id="toast" class="toast align-items-center text-bg-primary border-0 position-fixed bottom-0 end-0 m-4" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 9999;">
       <div class="d-flex">
         <div class="toast-body" id="toastMessage">Rota updated</div>
@@ -103,7 +97,7 @@
       </div>
     </div>
 
-  </div> <!-- Close container -->
+  </div> <!-- container -->
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzf7DklwG6VZu8XXLqrZGfk_ouVpoa26rK6NL8Lbtcoyd_rpXWtrjscXLFbSpCnQQPCRQ/exec";
@@ -124,29 +118,7 @@ function isCacheStale(minutes = 15) {
   return (Date.now() - lastUpdate) > minutes * 60 * 1000;
 }
 
-function formatTime(value) {
-  if (!value) return "";
-  try {
-    const date = new Date(value);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return value;
-  }
-}
-
-function getSectionFromRole(role) {
-  const clean = role.toLowerCase();
-  if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
-  if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
-  if (/^romeo/i.test(role)) return "Responders";
-  if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
-  if (/^stages/i.test(role)) return "Stage Medical";
-  if (/^medcomms/i.test(role)) return "Medcomms Team";
-  if (/^make/i.test(role)) return "Make Ready Team";
-  return "General";
-}
-
-async function preloadShifts(force = false) {
+function preloadShifts(force = false) {
   rotaCache = loadCacheFromStorage();
   const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
 
@@ -157,29 +129,28 @@ async function preloadShifts(force = false) {
     return;
   }
 
-  try {
-    const res = await fetch(`${API_URL}?action=loadAllShifts`);
-    const rawData = await res.json();
-
-    rotaCache = rawData.map(entry => ({
-      shiftTitle: (entry["Section"] || "").trim(),
-      section: getSectionFromRole(entry["Location"] || ""),
-      role: (entry["Location"] || "").trim(),
-      time: formatTime(entry["Start"]) + " - " + formatTime(entry["Finish"]),
-      crew1: (entry["Crew 1"] || "").trim(),
-      crew2: (entry["Crew 2"] || "").trim(),
-      day: (entry["Day"] || "").trim()
-    }));
-
-    saveCacheToStorage();
-    updateStatus("Live data loaded");
-    showToast("✅ Live rota updated!");
-    populateDayOptions();
-  } catch (err) {
-    updateStatus("⚠️ Using cached rota");
-    showToast("⚠️ Offline: using cached rota");
-    populateDayOptions();
-  }
+  fetch(`${API_URL}?action=loadAllShifts`)
+    .then(res => res.json())
+    .then(data => {
+      rotaCache = data.map(entry => ({
+        shiftTitle: (entry["Section"] || "").trim(),
+        section: getSectionFromRole(entry["Location"] || ""),
+        role: (entry["Location"] || "").trim(),
+        time: formatTime(entry["Start"]) + " - " + formatTime(entry["Finish"]),
+        crew1: (entry["Crew 1"] || "").trim(),
+        crew2: (entry["Crew 2"] || "").trim(),
+        day: (entry["Day"] || "").trim()
+      }));
+      saveCacheToStorage();
+      updateStatus("Live data loaded");
+      showToast("✅ Live rota updated!");
+      populateDayOptions();
+    })
+    .catch(() => {
+      updateStatus("⚠️ Using cached rota");
+      showToast("⚠️ Offline: using cached rota");
+      populateDayOptions();
+    });
 }
 
 function populateDayOptions() {
@@ -188,14 +159,10 @@ function populateDayOptions() {
     const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     return dayOrder.indexOf(a) - dayOrder.indexOf(b);
   });
-
   daySelect.innerHTML = days.map(day => `<option>${day}</option>`).join("");
 
   const savedDay = localStorage.getItem("selectedDay");
-  const todayDay = new Date().toLocaleDateString('en-GB', { weekday: 'long' });
-
-  daySelect.value = savedDay || todayDay || "Tuesday";
-
+  daySelect.value = savedDay || "Tuesday";
   loadRota();
 }
 
@@ -207,7 +174,6 @@ function showToast(message) {
   const toastEl = document.getElementById("toast");
   const toastMsg = document.getElementById("toastMessage");
   toastMsg.textContent = message;
-
   const toast = new bootstrap.Toast(toastEl);
   toast.show();
 }
@@ -235,7 +201,7 @@ function renderRota(data) {
   data.forEach(row => {
     const shift = (row.shiftTitle || "").trim();
     const section = (row.section || "").trim();
-    if (!shift || shift.toLowerCase() === "other") return;
+    if (!shift) return;
     if (!grouped[shift]) grouped[shift] = {};
     if (!grouped[shift][section]) grouped[shift][section] = [];
     grouped[shift][section].push(row);
@@ -303,12 +269,55 @@ function renderRota(data) {
   document.getElementById("rotaContent").innerHTML = html;
 }
 
-window.onload = async () => {
-  await preloadShifts();
-};
-</script>
+function formatTime(value) {
+  if (!value) return "";
+  if (!isNaN(Date.parse(value))) {
+    const date = new Date(value);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return value;
+}
 
+function runSearch() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  if (!query) {
+    alert("Please enter a name to search.");
+    return;
+  }
+
+  const matches = [];
+  const foundNames = new Set();
+
+  rotaCache.forEach(entry => {
+    const crew1 = entry.crew1.toLowerCase();
+    const crew2 = entry.crew2.toLowerCase();
+    if (crew1.includes(query) || crew2.includes(query)) {
+      matches.push(entry);
+      if (crew1.includes(query)) foundNames.add(entry.crew1);
+      if (crew2.includes(query)) foundNames.add(entry.crew2);
+    }
+  });
+
+  const uniqueNames = Array.from(foundNames);
+  if (!matches.length) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+  } else if (uniqueNames.length > 1) {
+    const nameList = uniqueNames.map(n => `<li><a href="#" onclick="filterByExactName('${n.replace(/'/g, "\\'")}')">${n}</a></li>`).join("");
+    document.getElementById("rotaContent").innerHTML = `<p>Multiple matches found. Please choose:</p><ul>${nameList}</ul>`;
+  } else {
+    filterByExactName(uniqueNames[0]);
+  }
+}
+
+function filterByExactName(name) {
+  const matches = rotaCache.filter(entry =>
+    entry.crew1.toLowerCase() === name.toLowerCase() ||
+    entry.crew2.toLowerCase() === name.toLowerCase()
+  );
+  renderRota(matches);
+}
+
+window.onload = () => preloadShifts();
+</script>
 </body>
 </html>
-
-
