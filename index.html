@@ -327,6 +327,14 @@ window.onload = async () => {
   await preloadShifts();
   loadRota();
 };
+
+setInterval(() => {
+  if (isCacheStale(15)) {
+    console.log("Cache is stale, refreshing rota...");
+    preloadShifts(true).then(loadRota);
+  }
+}, 5 * 60 * 1000); // Check every 5 minutes
+
 </script>
 </body>
 </html>
