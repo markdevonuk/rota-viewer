@@ -57,11 +57,12 @@
   </div>
 
   <!-- Jump Links (Early / Late / Night) -->
-  <div class="mb-4 text-center">
-    <a href="#early" class="me-2">Early</a> |
-    <a href="#late" class="mx-2">Late</a> |
-    <a href="#night" class="ms-2">Night</a>
-  </div>
+  <div id="jumpLinks" class="mb-4 text-center">
+  <a href="#early" class="me-2">Early</a> |
+  <a href="#late" class="mx-2">Late</a> |
+  <a href="#night" class="ms-2">Night</a>
+</div>
+
 
   <!-- Rota Content Display -->
   <div id="rotaContent"></div>
@@ -356,10 +357,18 @@ setInterval(() => {
 }, 5 * 60 * 1000); // Check every 5 minutes
 
   // Toggle Search Bar Open/Close
+// Toggle the Search Bar open/close
 document.getElementById("searchToggle").addEventListener("click", () => {
   const bar = document.getElementById("searchBar");
   bar.style.display = (bar.style.display === "none" || bar.style.display === "") ? "block" : "none";
 });
+
+function renderGroupedRota(data, isSearch = false, selectedName = "") {
+  if (isSearch) {
+    document.getElementById("jumpLinks").style.display = "none";
+  } else {
+    document.getElementById("jumpLinks").style.display = "block";
+  }
 
 
 </script>
