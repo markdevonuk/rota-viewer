@@ -241,7 +241,7 @@ function renderGroupedRota(data, isSearch = false) {
     const selectedDay = document.getElementById("daySelect")?.value || "";
 
 html += `
-  <div id="${shiftType.toLowerCase()}" class="shift-header my-4">
+  <div id="${shiftType.toLowerCase()}" class="shift-header my-5">
     <span class="badge ${getBadgeClass(shiftType)} p-2">${selectedDay} ${shiftType} Shifts</span>
   </div>
 `;
