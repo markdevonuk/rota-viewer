@@ -119,56 +119,6 @@ html {
 .card-content {
   flex: 1;
 }
-.share-button {
-  align-self: flex-end;
-  font-size: 0.9rem;
-  color: #6c757d;
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  transition: background-color 0.2s, color 0.2s;
-  margin-top: 0.5rem;
-}
-.share-button:hover {
-  background-color: #f8f9fa;
-  color: #0d6efd;
-}
-.share-modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  display: none;
-  z-index: 1000;
-  width: 90%;
-  max-width: 350px;
-}
-.share-modal.active {
-  display: block;
-}
-.share-option {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-.share-option:hover {
-  background-color: #f8f9fa;
-}
-.share-option i {
-  font-size: 1.5rem;
-  margin-right: 0.75rem;
-}
 @media (max-width: 768px) {
   .day-navigation {
     display: flex;
@@ -252,27 +202,6 @@ html {
   </div>
 </div>
 
-<!-- Share Modal -->
-<div class="search-backdrop" onclick="closeShareModal()"></div>
-<div class="share-modal">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">Share Shift</h5>
-    <i class="bi bi-x-lg" style="cursor: pointer;" onclick="closeShareModal()"></i>
-  </div>
-  <div class="share-option" onclick="shareViaEmail()">
-    <i class="bi bi-envelope"></i>
-    <span>Email</span>
-  </div>
-  <div class="share-option" onclick="shareViaWhatsApp()">
-    <i class="bi bi-whatsapp"></i>
-    <span>WhatsApp</span>
-  </div>
-  <div class="share-option" onclick="copyShiftToClipboard()">
-    <i class="bi bi-clipboard"></i>
-    <span>Copy to Clipboard</span>
-  </div>
-</div>
-
 <script>
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec";
@@ -281,7 +210,6 @@ let availableDays = [];
 let autoRefreshTimer = null;
 let isSearchMode = false;
 let currentSearchTerm = "";
-let currentShiftToShare = null;
 let touchStartX = 0;
 let touchEndX = 0;
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -494,7 +422,6 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
                             <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
                             <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
                         </div>
-                        <button class="share-button" onclick="showShareModal(${JSON.stringify(row).replace(/"/g, '&quot;')})">Share</button>
                     </div>
                 </div>
                 `;
@@ -537,7 +464,6 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
                         <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
                         <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
                     </div>
-                    <button class="share-button" onclick="showShareModal(${JSON.stringify(row).replace(/"/g, '&quot;')})">Share</button>
                 </div>
             </div>
             `).join("");
@@ -550,7 +476,7 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
 // --- Search Functions ---
 function toggleSearch() {
     const modal = document.querySelector('.search-modal');
-    const backdrop = document.querySelectorAll('.search-backdrop')[0];
+    const backdrop = document.querySelector('.search-backdrop');
     const isActive = modal.classList.contains('active');
     
     if (isActive) {
@@ -687,76 +613,6 @@ function navigateDay(direction) {
     }
 }
 
-// --- Share Functions ---
-function showShareModal(shiftData) {
-    currentShiftToShare = shiftData;
-    const modal = document.querySelector('.share-modal');
-    const backdrop = document.querySelectorAll('.search-backdrop')[1];
-    modal.classList.add('active');
-    backdrop.classList.add('active');
-}
-
-function closeShareModal() {
-    const modal = document.querySelector('.share-modal');
-    const backdrop = document.querySelectorAll('.search-backdrop')[1];
-    modal.classList.remove('active');
-    backdrop.classList.remove('active');
-}
-
-function shareViaEmail() {
-    if (!currentShiftToShare) return;
-    
-    const subject = encodeURIComponent(`Shift Details: ${currentShiftToShare.role} - ${currentShiftToShare.day}`);
-    const body = encodeURIComponent(`
-Shift Details:
-Role: ${currentShiftToShare.role}
-Day: ${currentShiftToShare.day}
-Time: ${currentShiftToShare.time}
-Crew 1: ${currentShiftToShare.crew1 || "–"}
-Crew 2: ${currentShiftToShare.crew2 || "–"}
-    `.trim());
-    
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    closeShareModal();
-}
-
-function shareViaWhatsApp() {
-    if (!currentShiftToShare) return;
-    
-    const text = encodeURIComponent(`
-*Shift Details*
-Role: ${currentShiftToShare.role}
-Day: ${currentShiftToShare.day}
-Time: ${currentShiftToShare.time}
-Crew 1: ${currentShiftToShare.crew1 || "–"}
-Crew 2: ${currentShiftToShare.crew2 || "–"}
-    `.trim());
-    
-    window.open(`https://wa.me/?text=${text}`, '_blank');
-    closeShareModal();
-}
-
-function copyShiftToClipboard() {
-    if (!currentShiftToShare) return;
-    
-    const text = `
-Shift Details:
-Role: ${currentShiftToShare.role}
-Day: ${currentShiftToShare.day}
-Time: ${currentShiftToShare.time}
-Crew 1: ${currentShiftToShare.crew1 || "–"}
-Crew 2: ${currentShiftToShare.crew2 || "–"}
-    `.trim();
-    
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Shift details copied to clipboard!');
-        closeShareModal();
-    }).catch(err => {
-        console.error('Failed to copy text: ', err);
-        alert('Failed to copy to clipboard');
-    });
-}
-
 // --- Swipe Gestures ---
 function handleTouchStart(event) {
     touchStartX = event.touches[0].clientX;
@@ -775,28 +631,31 @@ function handleTouchEnd() {
         if (swipeDistance > 0) {
             // Swipe right - go to previous day
             navigateDay(-1);
-          } else {
-// Swipe left - go to next day
-navigateDay(1);
+        } else {
+            // Swipe left - go to next day
+            navigateDay(1);
+        }
+    }
+    
+    // Reset values
+    touchStartX = 0;
+    touchEndX = 0;
 }
-}
-// Reset values
-touchStartX = 0;
-touchEndX = 0;
-}
+
 // --- Initialization ---
 window.onload = async () => {
-await preloadShifts();
-loadRota();
-startAutoRefresh();
-// Set up scroll event listener for back to top button
-window.addEventListener('scroll', handleScroll);
-
-// Set up swipe gesture handlers
-const rotaContent = document.getElementById('rotaContent');
-rotaContent.addEventListener('touchstart', handleTouchStart, false);
-rotaContent.addEventListener('touchmove', handleTouchMove, false);
-rotaContent.addEventListener('touchend', handleTouchEnd, false);
+    await preloadShifts();
+    loadRota();
+    startAutoRefresh();
+    
+    // Set up scroll event listener for back to top button
+    window.addEventListener('scroll', handleScroll);
+    
+    // Set up swipe gesture handlers
+    const rotaContent = document.getElementById('rotaContent');
+    rotaContent.addEventListener('touchstart', handleTouchStart, false);
+    rotaContent.addEventListener('touchmove', handleTouchMove, false);
+    rotaContent.addEventListener('touchend', handleTouchEnd, false);
 };
 </script>
 </body>
