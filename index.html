@@ -65,15 +65,292 @@
 </div>
 
 <script>
-// Original working functions (paste your full original script here, unchanged)
-// Then at the bottom, just add the tiny toggle for search:
+// Config
+const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; 
+
+let rotaCache = [];
+let availableDays = [];
+
+// Helpers
+function normalizeDay(dayValue) {
+  if (!dayValue) return "";
+  const clean = dayValue.trim().toLowerCase();
+  const daysOfWeek = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
+  for (const day of daysOfWeek) {
+    if (clean.includes(day.toLowerCase())) return day;
+  }
+  return "";
+}
+
+function getShiftType(shiftTitle) {
+  const clean = (shiftTitle || "").toLowerCase();
+  if (clean.includes("early")) return "Early";
+  if (clean.includes("late")) return "Late";
+  if (clean.includes("night")) return "Night";
+  return "Other";
+}
+
+function getBadgeClass(shiftType) {
+  if (shiftType === "Early") return "badge-early";
+  if (shiftType === "Late") return "badge-late";
+  if (shiftType === "Night") return "badge-night";
+  return "bg-secondary";
+}
+
+function getSectionFromRole(role) {
+  const clean = role.trim().toLowerCase();
+  if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
+  if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
+  if (/^romeo/i.test(role)) return "Responders";
+  if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
+  if (/^stages/i.test(role)) return "Stage Medical";
+  if (/^medcomms/i.test(role)) return "Medcomms Team";
+  if (/^make/i.test(role)) return "Make Ready Team";
+  return "General";
+}
+
+function getCardClass(section) {
+  const clean = section.toLowerCase();
+  if (clean.includes("leadership")) return "card-leadership";
+  if (clean.includes("vehicles")) return "card-vehicles";
+  if (clean.includes("responders")) return "card-responders";
+  if (clean.includes("static")) return "card-static";
+  if (clean.includes("stage")) return "card-stage";
+  if (clean.includes("medcomms")) return "card-medcomms";
+  if (clean.includes("make ready")) return "card-makeready";
+  return "";
+}
+
+// Cache Management
+function saveCacheToStorage() {
+  localStorage.setItem("rotaCache", JSON.stringify(rotaCache));
+  localStorage.setItem("rotaCacheTimestamp", Date.now());
+}
+
+function loadCacheFromStorage() {
+  const cached = localStorage.getItem("rotaCache");
+  return cached ? JSON.parse(cached) : [];
+}
+
+function isCacheStale(minutes = 15) {
+  const lastUpdate = parseInt(localStorage.getItem("rotaCacheTimestamp") || "0");
+  return (Date.now() - lastUpdate) > minutes * 60 * 1000;
+}
+
+// Load Shifts
+async function preloadShifts(force = false) {
+  rotaCache = loadCacheFromStorage();
+  const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
+
+  if (usingCache) {
+    updateAvailableDays();
+    updateStatus("Loaded from cache");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}?action=loadAllShifts`);
+    const rawData = await res.json();
+
+    rotaCache = rawData.map(entry => ({
+      shiftTitle: (entry["Section"] || "").trim(),
+      role: (entry["Location"] || "").trim(),
+      time: `${entry["Start"]} - ${entry["Finish"]}`,
+      crew1: (entry["Crew 1"] || "").trim(),
+      crew2: (entry["Crew 2"] || "").trim(),
+      day: normalizeDay(entry["Day"])
+    }));
+
+    saveCacheToStorage();
+    updateAvailableDays();
+    updateStatus("Live rota loaded");
+  } catch (err) {
+    updateStatus("⚠ Using cached rota");
+  }
+}
+
+// Days Dropdown
+function updateAvailableDays() {
+  const daysFound = new Set(rotaCache.map(entry => entry.day));
+  availableDays = Array.from(daysFound).sort((a, b) => {
+    const dayOrder = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
+    return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+  });
+
+  const daySelect = document.getElementById("daySelect");
+  daySelect.innerHTML = availableDays.map(day => `<option value="${day}">${day}</option>`).join("");
+
+  const savedDay = localStorage.getItem("selectedDay");
+  if (savedDay && availableDays.includes(savedDay)) {
+    daySelect.value = savedDay;
+  }
+}
+
+// Status Message
+function updateStatus(msg) {
+  document.getElementById("dataStatus").textContent = msg;
+}
+
+// Load Day's Rota
+function loadRota() {
+  const daySelect = document.getElementById("daySelect");
+  const day = daySelect.value;
+  localStorage.setItem("selectedDay", day);
+
+  document.getElementById("rotaContent").innerHTML =
+    '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+  const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
+  renderGroupedRota(dayData, false);
+}
+
+// Render Rota
+function renderGroupedRota(data, isSearch = false, selectedName = "") {
+  if (!data.length) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
+    return;
+  }
+
+  if (isSearch) {
+    const groupedByDay = {};
+
+    data.forEach(entry => {
+      if (!groupedByDay[entry.day]) groupedByDay[entry.day] = [];
+      groupedByDay[entry.day].push(entry);
+    });
+
+    let html = "";
+
+    for (const day in groupedByDay) {
+      html += `<h4 class="mt-4">Shifts for ${selectedName} on ${day}</h4><div class="row g-3 mb-4">`;
+      groupedByDay[day].forEach(row => {
+        html += `
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role))}">
+              <h5>${row.role}</h5>
+              <p><strong>Time:</strong> ${row.time}</p>
+              <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+              <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    document.getElementById("rotaContent").innerHTML = html;
+    return;
+  }
+
+  const groupedByShift = { Early: [], Late: [], Night: [], Other: [] };
+  data.forEach(entry => groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
+
+  let html = "";
+
+  for (const shiftType of ["Early", "Late", "Night", "Other"]) {
+    if (!groupedByShift[shiftType].length) continue;
+
+    const selectedDay = document.getElementById("daySelect")?.value || "";
+
+    html += `
+      <div id="${shiftType.toLowerCase()}" class="shift-header my-5">
+        <span class="badge ${getBadgeClass(shiftType)} p-2">${selectedDay} ${shiftType} Shifts</span>
+      </div>
+    `;
+
+    const groupedBySection = {};
+    groupedByShift[shiftType].forEach(entry => {
+      const section = getSectionFromRole(entry.role);
+      if (!groupedBySection[section]) groupedBySection[section] = [];
+      groupedBySection[section].push(entry);
+    });
+
+    for (const section in groupedBySection) {
+      html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
+      html += groupedBySection[section].map(row => `
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm p-3 ${getCardClass(section)}">
+            <h5>${row.role}</h5>
+            <p><strong>Time:</strong> ${row.time}</p>
+            <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+            <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+          </div>
+        </div>
+      `).join("");
+      html += `</div>`;
+    }
+  }
+
+  document.getElementById("rotaContent").innerHTML = html;
+}
+
+// Search
+function runSearch() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  if (!query) return alert("Please enter a name to search.");
+
+  const matches = [];
+  const foundNames = new Set();
+
+  rotaCache.forEach(entry => {
+    if (entry.crew1.toLowerCase().includes(query)) foundNames.add(entry.crew1.trim());
+    if (entry.crew2.toLowerCase().includes(query)) foundNames.add(entry.crew2.trim());
+    if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
+      matches.push(entry);
+    }
+  });
+
+  const uniqueNames = Array.from(foundNames);
+
+  if (!matches.length) {
+    document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+  } else if (uniqueNames.length > 1) {
+    const nameList = uniqueNames.map(name => `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`).join("");
+    document.getElementById("rotaContent").innerHTML = `
+      <p>Multiple matches found. Please choose:</p>
+      <ul>${nameList}</ul>
+    `;
+  } else {
+    filterByExactName(uniqueNames[0]);
+  }
+}
+
+function filterByExactName(name) {
+  const results = rotaCache.filter(entry =>
+    entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() ||
+    entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+  );
+  renderGroupedRota(results, true, name);
+}
+
+// Reload and Clear
+function forceReloadRota() {
+  preloadShifts(true).then(loadRota);
+}
+
+function clearRotaCache() {
+  if (confirm("Clear cache and reload?")) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+// Page Load
+window.onload = async () => {
+  await preloadShifts();
+  loadRota();
+};
+
+// Toggle the Search Bar
 document.getElementById("searchToggle").addEventListener("click", () => {
   const bar = document.getElementById("searchBar");
   bar.style.display = (bar.style.display === "none" || bar.style.display === "") ? "block" : "none";
 });
 </script>
+
 </body>
 </html>
+
 
 
 
