@@ -70,6 +70,35 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
   min-height: 400px;
   color: #666;
 }
+.back-to-top {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background-color: #0d6efd;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+  z-index: 998;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.back-to-top:hover {
+  background-color: #0b5ed7;
+}
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+}
+html {
+  scroll-behavior: smooth;
+}
 </style>
 </head>
 <body>
@@ -109,6 +138,11 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
     <div id="dataStatus" class="mt-2" style="font-size: 0.9rem; color: gray;"></div>
     <div id="lastRefresh" class="mt-1" style="font-size: 0.8rem; color: #6c757d;"></div>
   </div>
+</div>
+
+<!-- Back to Top Button -->
+<div class="back-to-top" onclick="scrollToTop()" title="Back to top">
+  <i class="bi bi-arrow-up"></i>
 </div>
 
 <!-- Search Modal -->
@@ -276,9 +310,14 @@ function updateAvailableDays() {
     const daySelect = document.getElementById("daySelect");
     daySelect.innerHTML = availableDays.map(day => `<option value="${day}">${day}</option>`).join("");
     
+    // Check for saved day, if none saved or saved day not available, default to first day
     const savedDay = localStorage.getItem("selectedDay");
     if (savedDay && availableDays.includes(savedDay)) {
         daySelect.value = savedDay;
+    } else if (availableDays.length > 0) {
+        // Default to the first available day
+        daySelect.value = availableDays[0];
+        localStorage.setItem("selectedDay", availableDays[0]);
     }
 }
 
@@ -495,11 +534,28 @@ function startAutoRefresh() {
     });
 }
 
+// --- Back to Top Button ---
+function handleScroll() {
+    const backToTopBtn = document.querySelector('.back-to-top');
+    if (window.scrollY > 200) {
+        backToTopBtn.classList.add('visible');
+    } else {
+        backToTopBtn.classList.remove('visible');
+    }
+}
+
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 // --- Initialization ---
 window.onload = async () => {
     await preloadShifts();
     loadRota();
     startAutoRefresh();
+    
+    // Set up scroll event listener for back to top button
+    window.addEventListener('scroll', handleScroll);
 };
 </script>
 </body>
