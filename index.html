@@ -11,7 +11,11 @@ body { padding: 1rem; background-color: #f9f9f9; }
 h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
 .shift-header { margin-top: 3rem; text-align: center; }
 .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
-.card { border-radius: 0.75rem; }
+.card { 
+  border-radius: 0.75rem; 
+  display: flex;
+  flex-direction: column;
+}
 .badge-early { background-color: #0d6efd; color: #fff; font-size: 1rem; }
 .badge-late { background-color: #6f42c1; color: #fff; font-size: 1rem; }
 .badge-night { background-color: #212529; color: #fff; font-size: 1rem; }
@@ -22,6 +26,11 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
 .card-stage { background-color: #f0e8ff; }
 .card-medcomms { background-color: #fff8e7; }
 .card-makeready { background-color: #ffffe0; }
+.card-dtl {
+  border: 3px solid #186638 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-2px);
+}
 .spinner { display: flex; justify-content: center; padding: 2rem; }
 .header-row { align-items: center; margin-bottom: 1rem; }
 .shift-links { margin: 1rem 0; }
@@ -107,19 +116,21 @@ html {
 .day-navigation button {
   padding: 0.25rem 0.5rem;
 }
+.card-content {
+  flex: 1;
+}
 .share-button {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  align-self: flex-end;
   font-size: 0.9rem;
   color: #6c757d;
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 4px;
   transition: background-color 0.2s, color 0.2s;
+  margin-top: 0.5rem;
 }
 .share-button:hover {
   background-color: #f8f9fa;
@@ -312,7 +323,12 @@ function getSectionFromRole(role) {
     return "General";
 }
 
-function getCardClass(section) {
+function getCardClass(section, role) {
+    // Check if this is a Duty Team Leader card
+    if (role && role.trim().toLowerCase() === "duty team leader") {
+        return "card-leadership card-dtl";
+    }
+    
     const clean = section.toLowerCase();
     if (clean.includes("leadership")) return "card-leadership";
     if (clean.includes("vehicles")) return "card-vehicles";
@@ -471,12 +487,14 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
             groupedByDay[day].forEach(row => {
                 html += `
                 <div class="col-12 col-md-6">
-                    <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role))}" style="position: relative;">
+                    <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role), row.role)}">
+                        <div class="card-content">
+                            <h5>${row.role}</h5>
+                            <p><strong>Time:</strong> ${row.time}</p>
+                            <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+                            <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+                        </div>
                         <button class="share-button" onclick="showShareModal(${JSON.stringify(row).replace(/"/g, '&quot;')})">Share</button>
-                        <h5>${row.role}</h5>
-                        <p><strong>Time:</strong> ${row.time}</p>
-                        <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-                        <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
                     </div>
                 </div>
                 `;
@@ -512,12 +530,14 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
             html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
             html += groupedBySection[section].map(row => `
             <div class="col-12 col-md-6">
-                <div class="card shadow-sm p-3 ${getCardClass(section)}" style="position: relative;">
+                <div class="card shadow-sm p-3 ${getCardClass(section, row.role)}">
+                    <div class="card-content">
+                        <h5>${row.role}</h5>
+                        <p><strong>Time:</strong> ${row.time}</p>
+                        <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+                        <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+                    </div>
                     <button class="share-button" onclick="showShareModal(${JSON.stringify(row).replace(/"/g, '&quot;')})">Share</button>
-                    <h5>${row.role}</h5>
-                    <p><strong>Time:</strong> ${row.time}</p>
-                    <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-                    <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
                 </div>
             </div>
             `).join("");
@@ -755,34 +775,29 @@ function handleTouchEnd() {
         if (swipeDistance > 0) {
             // Swipe right - go to previous day
             navigateDay(-1);
-        } else {
-            // Swipe left - go to next day
-            navigateDay(1);
-        }
-    }
-    
-    // Reset values
-    touchStartX = 0;
-    touchEndX = 0;
+          } else {
+// Swipe left - go to next day
+navigateDay(1);
 }
-
+}
+// Reset values
+touchStartX = 0;
+touchEndX = 0;
+}
 // --- Initialization ---
 window.onload = async () => {
-    await preloadShifts();
-    loadRota();
-    startAutoRefresh();
-    
-    // Set up scroll event listener for back to top button
-    window.addEventListener('scroll', handleScroll);
-    
-    // Set up swipe gesture handlers
-    const rotaContent = document.getElementById('rotaContent');
-    rotaContent.addEventListener('touchstart', handleTouchStart, false);
-    rotaContent.addEventListener('touchmove', handleTouchMove, false);
-    rotaContent.addEventListener('touchend', handleTouchEnd, false);
+await preloadShifts();
+loadRota();
+startAutoRefresh();
+// Set up scroll event listener for back to top button
+window.addEventListener('scroll', handleScroll);
+
+// Set up swipe gesture handlers
+const rotaContent = document.getElementById('rotaContent');
+rotaContent.addEventListener('touchstart', handleTouchStart, false);
+rotaContent.addEventListener('touchmove', handleTouchMove, false);
+rotaContent.addEventListener('touchend', handleTouchEnd, false);
 };
 </script>
 </body>
 </html>
-
-
