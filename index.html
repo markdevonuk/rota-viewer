@@ -54,6 +54,22 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
 .search-backdrop.active {
   display: block;
 }
+.search-results-header {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+.initial-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #666;
+}
 </style>
 </head>
 <body>
@@ -66,7 +82,9 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
   
   <!-- Day Selector -->
   <div class="mb-4">
-    <select id="daySelect" class="form-select" onchange="loadRota()"></select>
+    <select id="daySelect" class="form-select" onchange="loadRota()" disabled>
+      <option>Loading days...</option>
+    </select>
   </div>
   
   <!-- Jump Links (shown conditionally) -->
@@ -76,7 +94,14 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
     <a href="#night" class="ms-2">Night</a>
   </div>
   
-  <div id="rotaContent"></div>
+  <div id="rotaContent">
+    <div class="initial-loading">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div>Loading rota data...</div>
+    </div>
+  </div>
   
   <div class="mt-5 text-center">
     <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
@@ -108,6 +133,7 @@ let rotaCache = [];
 let availableDays = [];
 let autoRefreshTimer = null;
 let isSearchMode = false;
+let currentSearchTerm = "";
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function normalizeDay(dayValue) {
@@ -201,6 +227,7 @@ async function preloadShifts(force = false) {
     if (usingCache) {
         updateAvailableDays();
         updateStatus("Loaded from cache");
+        document.getElementById("daySelect").disabled = false;
         return;
     }
     
@@ -219,10 +246,11 @@ async function preloadShifts(force = false) {
         saveCacheToStorage();
         updateAvailableDays();
         updateStatus("Live rota loaded");
+        document.getElementById("daySelect").disabled = false;
         
         // Reload the current view if we've updated the data
         const currentView = document.getElementById("rotaContent").innerHTML;
-        if (currentView && !currentView.includes("No shifts found")) {
+        if (currentView && !currentView.includes("No shifts found") && !currentView.includes("initial-loading")) {
             if (isSearchMode) {
                 // If in search mode, rerun the search with fresh data
                 runSearch();
@@ -234,6 +262,7 @@ async function preloadShifts(force = false) {
     } catch (err) {
         console.error("Error loading rota data:", err);
         updateStatus("Error loading data. Using cached rota");
+        document.getElementById("daySelect").disabled = false;
     }
 }
 
@@ -273,20 +302,26 @@ function loadRota() {
     renderGroupedRota(dayData, false);
 }
 
-function renderGroupedRota(data, isSearch = false) {
+function renderGroupedRota(data, isSearch = false, searchTerm = "") {
     if (!data.length) {
         document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
         return;
     }
     
     if (isSearch) {
+        let html = '';
+        
+        // Add search results header
+        if (searchTerm) {
+            html += `<div class="search-results-header">Search results for "${searchTerm}"</div>`;
+        }
+        
         const groupedByDay = {};
         data.forEach(entry => {
             if (!groupedByDay[entry.day]) groupedByDay[entry.day] = [];
             groupedByDay[entry.day].push(entry);
         });
         
-        let html = "";
         for (const day in groupedByDay) {
             html += `<h4 class="mt-4">${day}</h4><div class="row g-3 mb-4">`;
             groupedByDay[day].forEach(row => {
@@ -373,6 +408,7 @@ function runSearch() {
     if (!query) return alert("Please enter a name to search.");
     
     isSearchMode = true;
+    currentSearchTerm = query;
     updateJumpLinksVisibility();
     toggleSearch(); // Close the search modal
     
@@ -393,27 +429,31 @@ function runSearch() {
     const uniqueNames = Array.from(foundNames);
     
     if (!matches.length) {
-        document.getElementById("rotaContent").innerHTML = "<p>No shifts found for that name.</p>";
+        document.getElementById("rotaContent").innerHTML = `
+            <div class="search-results-header">Search results for "${query}"</div>
+            <p>No shifts found for that name.</p>
+        `;
     } else if (uniqueNames.length > 1) {
         const nameList = uniqueNames.map(name => 
             `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`
         ).join("");
         
         document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
         <p>Multiple matches found. Please choose:</p>
         <ul>${nameList}</ul>
         `;
     } else {
-        filterByExactName(uniqueNames[0]);
+        filterByExactName(uniqueNames[0], query);
     }
 }
 
-function filterByExactName(name) {
+function filterByExactName(name, originalSearch = "") {
     const results = rotaCache.filter(entry => 
         entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
         entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
     );
-    renderGroupedRota(results, true);
+    renderGroupedRota(results, true, name);
 }
 
 function forceReloadRota() {
