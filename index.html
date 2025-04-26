@@ -7,7 +7,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
 body { padding: 1rem; background-color: #f9f9f9; }
-h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
+h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
 .shift-header { margin-top: 3rem; text-align: center; }
 .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
 .card { border-radius: 0.75rem; }
@@ -22,34 +22,46 @@ h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; }
 .card-medcomms { background-color: #fff8e7; }
 .card-makeready { background-color: #ffffe0; }
 .spinner { display: flex; justify-content: center; padding: 2rem; }
+.header-row { align-items: center; margin-bottom: 1rem; }
+.shift-links { margin: 1rem 0; }
 </style>
 </head>
 <body>
 <div class="container">
-<h2>Event Rota</h2>
-<!-- Jump Links -->
-<div class="mb-4 text-center">
-<a href="#early" class="me-2">Early</a> |
-<a href="#late" class="mx-2">Late</a> |
-<a href="#night" class="ms-2">Night</a>
-</div>
-<!-- Search and Select -->
-<div class="mb-4">
-<label for="searchInput" class="form-label">Search by Crew Name:</label>
-<div class="input-group mb-3">
-<input type="text" id="searchInput" class="form-control" placeholder="Enter full or partial name...">
-<button class="btn btn-primary" onclick="runSearch()">Search</button>
-</div>
-<label for="daySelect" class="form-label">Select Day:</label>
-<select id="daySelect" class="form-select" onchange="loadRota()"></select>
-</div>
-<div id="rotaContent"></div>
-<div class="mt-5 text-center">
-<button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
-<button class="btn btn-danger" onclick="clearRotaCache()">Clear Cache</button>
-<div id="dataStatus" class="mt-2" style="font-size: 0.9rem; color: gray;"></div>
-<div id="lastRefresh" class="mt-1" style="font-size: 0.8rem; color: #6c757d;"></div>
-</div>
+  <!-- 1. Title and Day Selector Row -->
+  <div class="row header-row">
+    <div class="col-md-6">
+      <h2>Event Rota</h2>
+    </div>
+    <div class="col-md-6">
+      <select id="daySelect" class="form-select" onchange="loadRota()"></select>
+    </div>
+  </div>
+  
+  <!-- 2. Jump Links (shown conditionally) -->
+  <div id="shiftLinks" class="shift-links text-center">
+    <a href="#early" class="me-2">Early</a> |
+    <a href="#late" class="mx-2">Late</a> |
+    <a href="#night" class="ms-2">Night</a>
+  </div>
+  
+  <!-- 3. Search Box -->
+  <div class="mb-4">
+    <label for="searchInput" class="form-label">Search by Crew Name:</label>
+    <div class="input-group mb-3">
+      <input type="text" id="searchInput" class="form-control" placeholder="Enter full or partial name...">
+      <button class="btn btn-primary" onclick="runSearch()">Search</button>
+    </div>
+  </div>
+  
+  <div id="rotaContent"></div>
+  
+  <div class="mt-5 text-center">
+    <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
+    <button class="btn btn-danger" onclick="clearRotaCache()">Clear Cache</button>
+    <div id="dataStatus" class="mt-2" style="font-size: 0.9rem; color: gray;"></div>
+    <div id="lastRefresh" class="mt-1" style="font-size: 0.8rem; color: #6c757d;"></div>
+  </div>
 </div>
 <script>
 // Config
@@ -57,6 +69,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxm
 let rotaCache = [];
 let availableDays = [];
 let autoRefreshTimer = null;
+let isSearchMode = false;
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function normalizeDay(dayValue) {
@@ -138,6 +151,11 @@ function updateLastRefreshTime() {
     }
 }
 
+function updateJumpLinksVisibility() {
+    const shiftLinks = document.getElementById("shiftLinks");
+    shiftLinks.style.display = isSearchMode ? "none" : "block";
+}
+
 async function preloadShifts(force = false) {
     rotaCache = loadCacheFromStorage();
     const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
@@ -167,7 +185,13 @@ async function preloadShifts(force = false) {
         // Reload the current view if we've updated the data
         const currentView = document.getElementById("rotaContent").innerHTML;
         if (currentView && !currentView.includes("No shifts found")) {
-            loadRota();
+            if (isSearchMode) {
+                // If in search mode, rerun the search with fresh data
+                runSearch();
+            } else {
+                // Otherwise reload the day view
+                loadRota();
+            }
         }
     } catch (err) {
         console.error("Error loading rota data:", err);
@@ -197,6 +221,9 @@ function updateStatus(msg) {
 
 // --- Rota Display ---
 function loadRota() {
+    isSearchMode = false;
+    updateJumpLinksVisibility();
+    
     const daySelect = document.getElementById("daySelect");
     const day = daySelect.value;
     localStorage.setItem("selectedDay", day);
@@ -286,6 +313,9 @@ function runSearch() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     if (!query) return alert("Please enter a name to search.");
     
+    isSearchMode = true;
+    updateJumpLinksVisibility();
+    
     const matches = [];
     const foundNames = new Set();
     
@@ -327,7 +357,13 @@ function filterByExactName(name) {
 }
 
 function forceReloadRota() {
-    preloadShifts(true).then(loadRota);
+    preloadShifts(true).then(() => {
+        if (isSearchMode) {
+            runSearch();
+        } else {
+            loadRota();
+        }
+    });
 }
 
 function clearRotaCache() {
