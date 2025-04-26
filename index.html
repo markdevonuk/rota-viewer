@@ -27,7 +27,7 @@
 <body>
 
 <div class="container">
-  <h2>Event Rota</h2>
+  <h2>Event Rota V14</h2>
 
   <!-- Jump Links -->
   <div class="mb-4 text-center">
@@ -238,11 +238,14 @@ function renderGroupedRota(data, isSearch = false) {
   for (const shiftType of ["Early", "Late", "Night", "Other"]) {
     if (!groupedByShift[shiftType].length) continue;
 
-    html += `
-      <div id="${shiftType.toLowerCase()}" class="shift-header my-4">
-        <span class="badge ${getBadgeClass(shiftType)} p-2">${shiftType} Shifts</span>
-      </div>
-    `;
+    const selectedDay = document.getElementById("daySelect")?.value || "";
+
+html += `
+  <div id="${shiftType.toLowerCase()}" class="shift-header my-4">
+    <span class="badge ${getBadgeClass(shiftType)} p-2">${selectedDay} ${shiftType} Shifts</span>
+  </div>
+`;
+
 
     const groupedBySection = {};
     groupedByShift[shiftType].forEach(entry => {
