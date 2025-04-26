@@ -25,7 +25,6 @@
   </style>
 </head>
 <body>
-
 <div class="container">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Event Rota</h2>
@@ -66,117 +65,8 @@
 </div>
 
 <script>
-// Your existing script functions go here, updated slightly to accept selectedName
-const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; 
-let rotaCache = [];
-let availableDays = [];
-
-function normalizeDay(dayValue) { ... }
-function getShiftType(shiftTitle) { ... }
-function getBadgeClass(shiftType) { ... }
-function getSectionFromRole(role) { ... }
-function getCardClass(section) { ... }
-function saveCacheToStorage() { ... }
-function loadCacheFromStorage() { ... }
-function isCacheStale(minutes = 15) { ... }
-async function preloadShifts(force = false) { ... }
-function updateAvailableDays() { ... }
-function updateStatus(msg) { ... }
-function loadRota() { ... }
-
-function renderGroupedRota(data, isSearch = false, selectedName = "") {
-  if (!data.length) {
-    document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
-    return;
-  }
-
-  if (isSearch) {
-    const groupedByDay = {};
-    data.forEach(entry => {
-      if (!groupedByDay[entry.day]) groupedByDay[entry.day] = [];
-      groupedByDay[entry.day].push(entry);
-    });
-
-    let html = "";
-
-    for (const day in groupedByDay) {
-      html += `<h4 class="mt-4">Shifts for ${selectedName} on ${day}</h4><div class="row g-3 mb-4">`;
-      groupedByDay[day].forEach(row => {
-        html += `
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role))}">
-              <h5>${row.role}</h5>
-              <p><strong>Time:</strong> ${row.time}</p>
-              <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-              <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
-            </div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-    }
-
-    document.getElementById("rotaContent").innerHTML = html;
-    return;
-  }
-
-  const groupedByShift = { Early: [], Late: [], Night: [], Other: [] };
-  data.forEach(entry => groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
-
-  let html = "";
-
-  for (const shiftType of ["Early", "Late", "Night", "Other"]) {
-    if (!groupedByShift[shiftType].length) continue;
-    const selectedDay = document.getElementById("daySelect")?.value || "";
-    html += `
-      <div id="${shiftType.toLowerCase()}" class="shift-header my-5">
-        <span class="badge ${getBadgeClass(shiftType)} p-2">${selectedDay} ${shiftType} Shifts</span>
-      </div>
-    `;
-
-    const groupedBySection = {};
-    groupedByShift[shiftType].forEach(entry => {
-      const section = getSectionFromRole(entry.role);
-      if (!groupedBySection[section]) groupedBySection[section] = [];
-      groupedBySection[section].push(entry);
-    });
-
-    for (const section in groupedBySection) {
-      html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
-      html += groupedBySection[section].map(row => `
-        <div class="col-12 col-md-6">
-          <div class="card shadow-sm p-3 ${getCardClass(section)}">
-            <h5>${row.role}</h5>
-            <p><strong>Time:</strong> ${row.time}</p>
-            <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-            <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
-          </div>
-        </div>
-      `).join("");
-      html += `</div>`;
-    }
-  }
-
-  document.getElementById("rotaContent").innerHTML = html;
-}
-
-function runSearch() { ... }
-function filterByExactName(name) {
-  const results = rotaCache.filter(entry =>
-    entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() ||
-    entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
-  );
-  renderGroupedRota(results, true, name);
-}
-function forceReloadRota() { preloadShifts(true).then(loadRota); }
-function clearRotaCache() { if (confirm("Clear cache and reload?")) { localStorage.clear(); location.reload(); } }
-
-window.onload = async () => {
-  await preloadShifts();
-  loadRota();
-};
-
-// Toggle the Search Bar open/close
+// Original working functions (paste your full original script here, unchanged)
+// Then at the bottom, just add the tiny toggle for search:
 document.getElementById("searchToggle").addEventListener("click", () => {
   const bar = document.getElementById("searchBar");
   bar.style.display = (bar.style.display === "none" || bar.style.display === "") ? "block" : "none";
@@ -184,6 +74,7 @@ document.getElementById("searchToggle").addEventListener("click", () => {
 </script>
 </body>
 </html>
+
 
 
 
