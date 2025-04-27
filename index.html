@@ -216,15 +216,15 @@ html {
  display: block;
  padding: 12px;
  text-align: center;
- text-decoration: none;
+ cursor: pointer;
  -webkit-tap-highlight-color: transparent;
  touch-action: manipulation;
+ user-select: none;
 }
 
 .name-selector:active {
  background-color: #0056b3;
 }
- 
  .list-unstyled li {
  margin-bottom: 0.5rem;
  }
@@ -744,9 +744,36 @@ function handleSearchKeyPress(event) {
     }
 }
 
-function runSearch() {
+ffunction runSearch() {
+ // Create a debug log div if it doesn't exist
+ let debugDiv = document.getElementById('debug-log');
+ if (!debugDiv) {
+ debugDiv = document.createElement('div');
+ debugDiv.id = 'debug-log';
+ debugDiv.style.position = 'fixed';
+ debugDiv.style.bottom = '0';
+ debugDiv.style.left = '0';
+ debugDiv.style.width = '100%';
+ debugDiv.style.backgroundColor = 'black';
+ debugDiv.style.color = 'white';
+ debugDiv.style.zIndex = '9999';
+ debugDiv.style.padding = '10px';
+ debugDiv.style.fontSize = '12px';
+ document.body.appendChild(debugDiv);
+ }
+
+ // Logging function
+ function mobileLog(message) {
+ console.log(message);
+ debugDiv.innerHTML += message + '<br>';
+ }
+
+ mobileLog('DEBUG: runSearch started');
+ 
  const query = document.getElementById("searchInput").value.trim().toLowerCase();
  if (!query) return alert("Please enter a name to search.");
+ 
+ mobileLog(`DEBUG: Search query: ${query}`);
  
  isSearchMode = true;
  currentSearchTerm = query;
@@ -770,6 +797,8 @@ entry.crew2.toLowerCase().includes(query)) {
  
  const uniqueNames = Array.from(foundNames);
  
+ mobileLog(`DEBUG: Found ${uniqueNames.length} unique names`);
+ 
  if (!matches.length) {
  document.getElementById("rotaContent").innerHTML = `
  <div class="search-results-header">Search results for "${query}"</div>
@@ -778,8 +807,11 @@ entry.crew2.toLowerCase().includes(query)) {
  } else if (uniqueNames.length > 1) {
  const nameList = uniqueNames.map(name => 
  `<li>
-   <a href="#" class="btn btn-primary btn-lg w-100 mb-2 name-selector" 
-   data-name="${name.replace(/'/g, "\\'")}">${name}</a>
+   <div 
+     class="btn btn-primary btn-lg w-100 mb-2 name-selector" 
+     data-name="${name.replace(/'/g, "\\'")}"
+     onclick="handleNameClick(this, event)"
+   >${name}</div>
  </li>`
  ).join("");
  
@@ -788,22 +820,34 @@ entry.crew2.toLowerCase().includes(query)) {
  <p>Multiple matches found. Please choose:</p>
  <ul class="list-unstyled px-3">${nameList}</ul>
  `;
- 
- // Add event delegation
- document.querySelector('.list-unstyled').addEventListener('click', function(event) {
- event.preventDefault();
- const nameButton = event.target.closest('.name-selector');
- if (nameButton) {
- const name = nameButton.getAttribute('data-name');
- filterByExactName(name);
- }
- });
- 
  } else {
  filterByExactName(uniqueNames[0], query);
  }
 }
 
+function handleNameClick(element, event) {
+ let debugDiv = document.getElementById('debug-log');
+ 
+ function mobileLog(message) {
+ console.log(message);
+ debugDiv.innerHTML += message + '<br>';
+ }
+
+ mobileLog('DEBUG: handleNameClick triggered');
+ 
+ // Prevent any default behaviors
+ if (event) {
+ event.preventDefault();
+ event.stopPropagation();
+ }
+ 
+ // Get the name from the data attribute
+ const name = element.getAttribute('data-name');
+ mobileLog(`DEBUG: selected name: ${name}`);
+ 
+ // Attempt to filter
+ filterByExactName(name);
+}
 function filterByExactName(name, originalSearch = "") {
  const results = rotaCache.filter(entry => 
  entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
