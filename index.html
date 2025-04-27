@@ -311,7 +311,7 @@ function getSectionFromRole(role) {
     if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
     if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
     if (/^romeo/i.test(role)) return "Responders";
-    if (/^(mike gate|white medical|white alpha|blue medical|worthy view)/i.test(role)) return "Static Medical Points";
+    if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
     if (/^stages/i.test(role)) return "Stage Medical";
     if (/^medcomms/i.test(role)) return "Medcomms Team";
     if (/^make/i.test(role)) return "Make Ready Team";
@@ -352,7 +352,12 @@ function loadCacheFromStorage() {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
         updateLastRefreshTime();
-        return JSON.parse(cached);
+        try {
+            return JSON.parse(cached);
+        } catch (e) {
+            console.error("Error parsing cached data:", e);
+            return [];
+        }
     }
     return [];
 }
@@ -381,14 +386,32 @@ function updateJumpLinksVisibility() {
 }
 
 async function preloadShifts(force = false) {
+    // Show loading state
+    document.getElementById("rotaContent").innerHTML = `
+        <div class="initial-loading">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div>Loading rota data...</div>
+        </div>
+    `;
+    
     rotaCache = loadCacheFromStorage();
     const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
     
     if (usingCache) {
-        updateAvailableDays();
-        updateStatus("Loaded from cache");
-        document.getElementById("daySelect").disabled = false;
-        return;
+        // Validate cached data before using it
+        if (rotaCache.every(entry => entry.day && entry.role)) {
+            updateAvailableDays();
+            updateStatus("Loaded from cache");
+            document.getElementById("daySelect").disabled = false;
+            // Wait for next tick before loading rota to ensure UI is ready
+            setTimeout(() => loadRota(), 0);
+            return;
+        } else {
+            console.log("Cached data is invalid, fetching fresh data");
+            rotaCache = [];
+        }
     }
     
     try {
@@ -405,31 +428,34 @@ async function preloadShifts(force = false) {
             throw new Error(errorMessage);
         }
         
-        rotaCache = rawData.map(entry => ({
-            shiftTitle: (entry["Section"] || "").trim(),
-            role: (entry["Location"] || "").trim(),
-            // Format the time to ensure 2-digit hours
-            time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
-            crew1: (entry["Crew 1"] || "").trim(),
-            crew2: (entry["Crew 2"] || "").trim(),
-            day: normalizeDay(entry["Day"])
-        }));
+        if (!Array.isArray(rawData) || rawData.length === 0) {
+            throw new Error("No data received from server");
+        }
+        
+        rotaCache = rawData
+            .filter(entry => entry["Location"] && entry["Day"]) // Filter out empty rows
+            .map(entry => ({
+                shiftTitle: (entry["Section"] || "").trim(),
+                role: (entry["Location"] || "").trim(),
+                // Format the time to ensure 2-digit hours
+                time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
+                crew1: (entry["Crew 1"] || "").trim(),
+                crew2: (entry["Crew 2"] || "").trim(),
+                day: normalizeDay(entry["Day"])
+            }))
+            .filter(entry => entry.day && entry.role); // Double-check after mapping
+        
+        if (rotaCache.length === 0) {
+            throw new Error("No valid shift data found");
+        }
+        
         saveCacheToStorage();
         updateAvailableDays();
         updateStatus("Live rota loaded");
         document.getElementById("daySelect").disabled = false;
         
-        // Reload the current view if we've updated the data
-        const currentView = document.getElementById("rotaContent").innerHTML;
-        if (currentView && !currentView.includes("No shifts found") && !currentView.includes("initial-loading")) {
-            if (isSearchMode) {
-                // If in search mode, rerun the search with fresh data
-                runSearch();
-            } else {
-                // Otherwise reload the day view
-                loadRota();
-            }
-        }
+        // Load the initial view
+        setTimeout(() => loadRota(), 0);
     } catch (err) {
         console.error("Error loading rota data:", err);
         updateStatus("Error: " + err.message);
@@ -437,6 +463,7 @@ async function preloadShifts(force = false) {
             <div class="alert alert-danger">
                 <h4>Error Loading Data</h4>
                 <p>${err.message}</p>
+                <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
             </div>
         `;
         document.getElementById("daySelect").disabled = true;
@@ -445,13 +472,22 @@ async function preloadShifts(force = false) {
 
 function updateAvailableDays() {
     const daysFound = new Set(rotaCache.map(entry => entry.day));
-    availableDays = Array.from(daysFound).sort((a, b) => {
-        const dayOrder = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
-        return dayOrder.indexOf(a) - dayOrder.indexOf(b);
-    });
+    availableDays = Array.from(daysFound)
+        .filter(day => day) // Remove any empty days
+        .sort((a, b) => {
+            const dayOrder = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
+            return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+        });
     
     const daySelect = document.getElementById("daySelect");
+    if (availableDays.length === 0) {
+        daySelect.innerHTML = '<option>No days available</option>';
+        daySelect.disabled = true;
+        return;
+    }
+    
     daySelect.innerHTML = availableDays.map(day => `<option value="${day}">${day}</option>`).join("");
+    daySelect.disabled = false;
     
     // Check for saved day, if none saved or saved day not available, default to first day
     const savedDayKey = `selectedDay_${currentEvent}`;
@@ -471,11 +507,23 @@ function updateStatus(msg) {
 
 // --- Rota Display ---
 function loadRota() {
+    // Don't try to load if there's no data
+    if (!rotaCache || rotaCache.length === 0) {
+        console.log("No rota data available");
+        return;
+    }
+    
     isSearchMode = false;
     updateJumpLinksVisibility();
     
     const daySelect = document.getElementById("daySelect");
     const day = daySelect.value;
+    
+    if (!day || day === "No days available") {
+        document.getElementById("rotaContent").innerHTML = "<p>No day selected.</p>";
+        return;
+    }
+    
     const savedDayKey = `selectedDay_${currentEvent}`;
     localStorage.setItem(savedDayKey, day);
     
@@ -483,12 +531,16 @@ function loadRota() {
         '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     
     const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
-    renderGroupedRota(dayData, false);
+    
+    // Small delay to ensure the spinner is visible
+    setTimeout(() => {
+        renderGroupedRota(dayData, false);
+    }, 100);
 }
 
 function renderGroupedRota(data, isSearch = false, searchTerm = "") {
-    if (!data.length) {
-        document.getElementById("rotaContent").innerHTML = "<p>No shifts found.</p>";
+    if (!data || !data.length) {
+        document.getElementById("rotaContent").innerHTML = "<p>No shifts found for this day.</p>";
         return;
     }
     
@@ -645,13 +697,7 @@ function filterByExactName(name, originalSearch = "") {
 }
 
 function forceReloadRota() {
-    preloadShifts(true).then(() => {
-        if (isSearchMode) {
-            runSearch();
-        } else {
-            loadRota();
-        }
-    });
+    preloadShifts(true);
 }
 
 function clearRotaCache() {
@@ -733,35 +779,34 @@ function handleTouchEnd() {
         } else {
             // Swipe left - go to next day
             navigateDay(1);
-        }
-    }
-    
-    // Reset values
-    touchStartX = 0;
-    touchEndX = 0;
+          }
 }
-
+// Reset values
+touchStartX = 0;
+touchEndX = 0;
+}
 // --- Initialization ---
 window.onload = async () => {
-    // Get event from URL and set up page
-    currentEvent = getEventFromURL();
-    updatePageHeader(currentEvent);
-    
-    // Set current year in copyright
-    setCurrentYear();
-    
-    await preloadShifts();
-    loadRota();
-    startAutoRefresh();
-    
-    // Set up scroll event listener for back to top button
-    window.addEventListener('scroll', handleScroll);
-    
-    // Set up swipe gesture handlers
-    const rotaContent = document.getElementById('rotaContent');
-    rotaContent.addEventListener('touchstart', handleTouchStart, false);
-    rotaContent.addEventListener('touchmove', handleTouchMove, false);
-    rotaContent.addEventListener('touchend', handleTouchEnd, false);
+// Get event from URL and set up page
+currentEvent = getEventFromURL();
+updatePageHeader(currentEvent);
+// Set current year in copyright
+setCurrentYear();
+
+// Load shifts
+await preloadShifts();
+
+// Start auto-refresh
+startAutoRefresh();
+
+// Set up scroll event listener for back to top button
+window.addEventListener('scroll', handleScroll);
+
+// Set up swipe gesture handlers
+const rotaContent = document.getElementById('rotaContent');
+rotaContent.addEventListener('touchstart', handleTouchStart, false);
+rotaContent.addEventListener('touchmove', handleTouchMove, false);
+rotaContent.addEventListener('touchend', handleTouchEnd, false);
 };
 </script>
 </body>
