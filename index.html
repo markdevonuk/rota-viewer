@@ -211,6 +211,19 @@ html {
  .search-results-header + p {
  margin-bottom: 1rem;
  }
+
+  .name-selector {
+ display: block;
+ padding: 12px;
+ text-align: center;
+ text-decoration: none;
+ -webkit-tap-highlight-color: transparent;
+ touch-action: manipulation;
+}
+
+.name-selector:active {
+ background-color: #0056b3;
+}
  
  .list-unstyled li {
  margin-bottom: 0.5rem;
@@ -765,8 +778,8 @@ entry.crew2.toLowerCase().includes(query)) {
  } else if (uniqueNames.length > 1) {
  const nameList = uniqueNames.map(name => 
  `<li>
-   <button class="btn btn-primary btn-lg w-100 mb-2" 
-   onclick="handleNameSelection('${name.replace(/'/g, "\\'")}')">${name}</button>
+   <a href="#" class="btn btn-primary btn-lg w-100 mb-2 name-selector" 
+   data-name="${name.replace(/'/g, "\\'")}">${name}</a>
  </li>`
  ).join("");
  
@@ -775,9 +788,28 @@ entry.crew2.toLowerCase().includes(query)) {
  <p>Multiple matches found. Please choose:</p>
  <ul class="list-unstyled px-3">${nameList}</ul>
  `;
+ 
+ // Add event delegation
+ document.querySelector('.list-unstyled').addEventListener('click', function(event) {
+ event.preventDefault();
+ const nameButton = event.target.closest('.name-selector');
+ if (nameButton) {
+ const name = nameButton.getAttribute('data-name');
+ filterByExactName(name);
+ }
+ });
+ 
  } else {
  filterByExactName(uniqueNames[0], query);
  }
+}
+
+function filterByExactName(name, originalSearch = "") {
+ const results = rotaCache.filter(entry => 
+ entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+ entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+ );
+ renderGroupedRota(results, true, name);
 }
 
 // New function to handle name selection
