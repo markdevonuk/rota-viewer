@@ -773,8 +773,7 @@ function startAutoRefresh() {
     // Also refresh when the page regains focus
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-            console.log("Page is visible again,
-                        refreshing data...");
+            console.log("Page is visible again, refreshing data...");
 preloadShifts(true);
 }
 });
