@@ -8,7 +8,18 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
 <style>
 body { padding: 1rem; background-color: #f9f9f9; }
-h2 { font-size: 1.8rem; font-weight: bold; margin-bottom: 0; }
+h2 { 
+  font-size: 1.8rem; 
+  font-weight: bold; 
+  margin-bottom: 0;
+  text-transform: none !important; /* Force no text transformation */
+}
+/* Additional override to ensure title displays consistently */
+#pageTitle {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-variant: normal !important;
+}
 .shift-header { margin-top: 3rem; text-align: center; }
 .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
 .card { 
@@ -128,6 +139,7 @@ html {
   padding-top: 1rem;
   border-top: 1px solid #dee2e6;
 }
+/* Mobile-specific override */
 @media (max-width: 768px) {
   .day-navigation {
     display: flex;
@@ -137,6 +149,12 @@ html {
   }
   #daySelect {
     max-width: 200px;
+  }
+  /* Ensure title styling is consistent on mobile */
+  h2, #pageTitle {
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    font-variant: normal !important;
   }
 }
 /* Touch and swipe styles */
@@ -311,7 +329,7 @@ function getSectionFromRole(role) {
     if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
     if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
     if (/^romeo/i.test(role)) return "Responders";
-    if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
+    if (/^(mike gate|white medical|white alpha|blue medical|worthy view)/i.test(role)) return "Static Medical Points";
     if (/^stages/i.test(role)) return "Stage Medical";
     if (/^medcomms/i.test(role)) return "Medcomms Team";
     if (/^make/i.test(role)) return "Make Ready Team";
@@ -768,19 +786,19 @@ function handleTouchMove(event) {
 }
 
 function handleTouchEnd() {
-    // Check if we have a swipe gesture
-    const swipeThreshold = 50; // Minimum distance for a swipe
-    const swipeDistance = touchEndX - touchStartX;
-    
-    if (Math.abs(swipeDistance) > swipeThreshold) {
-        if (swipeDistance > 0) {
-            // Swipe right - go to previous day
-            navigateDay(-1);
-        } else {
-            // Swipe left - go to next day
-            navigateDay(1);
-          }
+// Check if we have a swipe gesture
+const swipeThreshold = 50; // Minimum distance for a swipe
+const swipeDistance = touchEndX - touchStartX;
+if (Math.abs(swipeDistance) > swipeThreshold) {
+    if (swipeDistance > 0) {
+        // Swipe right - go to previous day
+        navigateDay(-1);
+    } else {
+        // Swipe left - go to next day
+        navigateDay(1);
+    }
 }
+
 // Reset values
 touchStartX = 0;
 touchEndX = 0;
@@ -811,3 +829,4 @@ rotaContent.addEventListener('touchend', handleTouchEnd, false);
 </script>
 </body>
 </html>
+
