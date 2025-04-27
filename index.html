@@ -204,7 +204,7 @@ html {
 
 <script>
 // Config
-const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec";
 let rotaCache = [];
 let availableDays = [];
 let autoRefreshTimer = null;
@@ -232,6 +232,34 @@ function updatePageHeader(eventName) {
     const formattedName = formatEventName(eventName);
     document.title = `${formattedName} Rota`;
     document.getElementById('pageTitle').textContent = `${formattedName} Rota`;
+}
+
+// Format time to ensure 2-digit hours
+function formatTime(timeString) {
+    if (!timeString) return timeString;
+    
+    // Split the time range into start and end times
+    const times = timeString.split('-');
+    
+    // Format each time part
+    const formattedTimes = times.map(time => {
+        const trimmedTime = time.trim();
+        
+        // Check if it's already in the correct format
+        if (/^\d{2}:\d{2}$/.test(trimmedTime)) {
+            return trimmedTime;
+        }
+        
+        // If it's in format like "7:00", add leading zero
+        if (/^\d:\d{2}$/.test(trimmedTime)) {
+            return '0' + trimmedTime;
+        }
+        
+        return trimmedTime;
+    });
+    
+    // Join the formatted times back together
+    return formattedTimes.join(' - ');
 }
 
 function normalizeDay(dayValue) {
@@ -361,7 +389,8 @@ async function preloadShifts(force = false) {
         rotaCache = rawData.map(entry => ({
             shiftTitle: (entry["Section"] || "").trim(),
             role: (entry["Location"] || "").trim(),
-            time: `${entry["Start"]} - ${entry["Finish"]}`,
+            // Format the time to ensure 2-digit hours
+            time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
             crew1: (entry["Crew 1"] || "").trim(),
             crew2: (entry["Crew 2"] || "").trim(),
             day: normalizeDay(entry["Day"])
