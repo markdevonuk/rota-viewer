@@ -13,12 +13,31 @@ h2 {
   font-weight: bold; 
   margin-bottom: 0;
   text-transform: none !important; /* Force no text transformation */
+  -webkit-text-transform: none !important; /* For Safari */
+  text-decoration: none !important;
+  font-variant: normal !important;
+  letter-spacing: normal !important;
 }
-/* Additional override to ensure title displays consistently */
+/* More aggressive override to ensure title displays consistently */
+h2#pageTitle,
 #pageTitle {
   text-transform: none !important;
+  -webkit-text-transform: none !important;
   letter-spacing: normal !important;
   font-variant: normal !important;
+  text-decoration: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  font-style: normal !important;
+}
+/* Even more specific targeting for mobile */
+.container .d-flex h2#pageTitle {
+  text-transform: none !important;
+  -webkit-text-transform: none !important;
+}
+/* More aggressive Bootstrap override */
+.h2, h2 {
+  text-transform: none !important;
+  -webkit-text-transform: none !important;
 }
 .shift-header { margin-top: 3rem; text-align: center; }
 .section-header { margin-top: 2rem; font-size: 1.5rem; font-weight: bold; }
@@ -151,10 +170,12 @@ html {
     max-width: 200px;
   }
   /* Ensure title styling is consistent on mobile */
-  h2, #pageTitle {
+  h2, h2#pageTitle, #pageTitle, .h2 {
     text-transform: none !important;
+    -webkit-text-transform: none !important;
     letter-spacing: normal !important;
     font-variant: normal !important;
+    text-decoration: none !important;
   }
 }
 /* Touch and swipe styles */
@@ -264,6 +285,13 @@ function updatePageHeader(eventName) {
     const formattedName = formatEventName(eventName);
     document.title = `${formattedName} Rota`;
     document.getElementById('pageTitle').textContent = `${formattedName} Rota`;
+    
+    // Additional fix for mobile browsers
+    const titleElement = document.getElementById('pageTitle');
+    titleElement.style.textTransform = 'none';
+    titleElement.style.webkitTextTransform = 'none';
+    titleElement.style.letterSpacing = 'normal';
+    titleElement.style.fontVariant = 'normal';
 }
 
 // Set current year in copyright notice
@@ -739,52 +767,45 @@ function startAutoRefresh() {
     autoRefreshTimer = setInterval(() => {
         console.log("Auto-refreshing rota data...");
         preloadShifts(true); // Force refresh the data
-    }, AUTO_REFRESH_INTERVAL);
-    
-    // Also refresh when the page regains focus
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            console.log("Page is visible again, refreshing data...");
-            preloadShifts(true);
-        }
-    });
+    },
+                                   AUTO_REFRESH_INTERVAL);
+// Also refresh when the page regains focus
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log("Page is visible again, refreshing data...");
+        preloadShifts(true);
+    }
+});
 }
-
 // --- Back to Top Button ---
 function handleScroll() {
-    const backToTopBtn = document.querySelector('.back-to-top');
-    if (window.scrollY > 200) {
-        backToTopBtn.classList.add('visible');
-    } else {
-        backToTopBtn.classList.remove('visible');
-    }
+const backToTopBtn = document.querySelector('.back-to-top');
+if (window.scrollY > 200) {
+backToTopBtn.classList.add('visible');
+} else {
+backToTopBtn.classList.remove('visible');
 }
-
+}
 function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
 // --- Day Navigation ---
 function navigateDay(direction) {
-    const daySelect = document.getElementById('daySelect');
-    const currentIndex = daySelect.selectedIndex;
-    const newIndex = currentIndex + direction;
-    
-    if (newIndex >= 0 && newIndex < availableDays.length) {
-        daySelect.selectedIndex = newIndex;
-        loadRota();
-    }
+const daySelect = document.getElementById('daySelect');
+const currentIndex = daySelect.selectedIndex;
+const newIndex = currentIndex + direction;
+if (newIndex >= 0 && newIndex < availableDays.length) {
+    daySelect.selectedIndex = newIndex;
+    loadRota();
 }
-
+}
 // --- Swipe Gestures ---
 function handleTouchStart(event) {
-    touchStartX = event.touches[0].clientX;
+touchStartX = event.touches[0].clientX;
 }
-
 function handleTouchMove(event) {
-    touchEndX = event.touches[0].clientX;
+touchEndX = event.touches[0].clientX;
 }
-
 function handleTouchEnd() {
 // Check if we have a swipe gesture
 const swipeThreshold = 50; // Minimum distance for a swipe
