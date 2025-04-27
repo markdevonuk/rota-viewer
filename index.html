@@ -119,6 +119,15 @@ html {
 .card-content {
   flex: 1;
 }
+.copyright {
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+}
 @media (max-width: 768px) {
   .day-navigation {
     display: flex;
@@ -180,6 +189,11 @@ html {
     <div id="dataStatus" class="mt-2" style="font-size: 0.9rem; color: gray;"></div>
     <div id="lastRefresh" class="mt-1" style="font-size: 0.8rem; color: #6c757d;"></div>
   </div>
+  
+  <!-- Copyright Notice -->
+  <div class="copyright">
+    © <span id="currentYear"></span> Mark Walker. All rights reserved.
+  </div>
 </div>
 
 <!-- Back to Top Button -->
@@ -204,7 +218,7 @@ html {
 
 <script>
 // Config
-const API_URL = "https://script.google.com/macros/s/AKfycbxp2MxNvj55UUXNDmhqwxxmuRSvRPgbJMFIRR7jbIoE0vwuYQXjIB60O-r__BTngKyJuw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
 let rotaCache = [];
 let availableDays = [];
 let autoRefreshTimer = null;
@@ -232,6 +246,11 @@ function updatePageHeader(eventName) {
     const formattedName = formatEventName(eventName);
     document.title = `${formattedName} Rota`;
     document.getElementById('pageTitle').textContent = `${formattedName} Rota`;
+}
+
+// Set current year in copyright notice
+function setCurrentYear() {
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
 }
 
 // Format time to ensure 2-digit hours
@@ -292,7 +311,7 @@ function getSectionFromRole(role) {
     if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
     if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
     if (/^romeo/i.test(role)) return "Responders";
-    if (/^(mike gate|white medical|white alpha|blue medical|worthy view)/i.test(role)) return "Static Medical Points";
+    if (/^(mike gate|white medical|white alpha|blue medical)/i.test(role)) return "Static Medical Points";
     if (/^stages/i.test(role)) return "Stage Medical";
     if (/^medcomms/i.test(role)) return "Medcomms Team";
     if (/^make/i.test(role)) return "Make Ready Team";
@@ -727,6 +746,9 @@ window.onload = async () => {
     // Get event from URL and set up page
     currentEvent = getEventFromURL();
     updatePageHeader(currentEvent);
+    
+    // Set current year in copyright
+    setCurrentYear();
     
     await preloadShifts();
     loadRota();
