@@ -191,52 +191,6 @@ html {
   touch-action: pan-y;
   user-select: none;
 }
-  /* Add these styles at the end of the existing <style> block */
-.search-results-header {
- background-color: #f8f9fa;
- padding: 1rem;
- border-radius: 8px;
- margin-bottom: 1.5rem;
- font-size: 1.2rem;
- font-weight: bold;
-}
-
-/* Improve mobile button/link usability */
-@media (max-width: 768px) {
- .search-results-header {
- padding: 1rem;
- font-size: 1rem;
- }
- 
- .search-results-header + p {
- margin-bottom: 1rem;
- }
-
- .name-selector {
- display: block;
- padding: 15px;
- text-align: center;
- cursor: pointer;
- -webkit-tap-highlight-color: transparent;
- touch-action: manipulation;
- user-select: none;
-}
-
-.name-selector:active {
- background-color: #0056b3;
-}
- .list-unstyled li {
- margin-bottom: 0.5rem;
- }
- 
- .list-unstyled .btn {
- padding: 0.75rem 1rem;
- font-size: 1rem;
--webkit-tap-highlight-color: transparent; /* Removes the blue highlight on mobile */
- touch-action: manipulation; /* Prevents double-tap zoom on some mobile browsers */
- }
-}
-  
 </style>
 </head>
 <body>
@@ -745,149 +699,48 @@ function handleSearchKeyPress(event) {
 }
 
 function runSearch() {
- const query = document.getElementById("searchInput").value.trim().toLowerCase();
- if (!query) return alert("Please enter a name to search.");
- 
- isSearchMode = true;
- currentSearchTerm = query;
- updateJumpLinksVisibility();
- toggleSearch(); // Close the search modal
- 
- const matches = [];
- const foundNames = new Set();
- 
- rotaCache.forEach(entry => {
- if (entry.crew1.toLowerCase().includes(query)) 
- foundNames.add(entry.crew1.trim());
- if (entry.crew2.toLowerCase().includes(query)) 
- foundNames.add(entry.crew2.trim());
- 
- if (entry.crew1.toLowerCase().includes(query) || 
-entry.crew2.toLowerCase().includes(query)) {
- matches.push(entry);
- }
- });
- 
- const uniqueNames = Array.from(foundNames);
- 
- if (!matches.length) {
- document.getElementById("rotaContent").innerHTML = `
- <div class="search-results-header">Search results for "${query}"</div>
- <p>No shifts found for that name.</p>
- `;
- } else if (uniqueNames.length > 1) {
- const nameList = uniqueNames.map(name => 
- `<li>
-   <div 
-     class="btn btn-primary btn-lg w-100 mb-2 name-selector" 
-     data-name="${name.replace(/'/g, "\\'")}"
-     ontouchstart="handleNameTouchStart(this, event)"
-     ontouchend="handleNameTouchEnd(this, event)"
-     onclick="handleNameClick(this, event)"
-   >${name}</div>
- </li>`
- ).join("");
- 
- document.getElementById("rotaContent").innerHTML = `
- <div class="search-results-header">Search results for "${query}"</div>
- <p>Multiple matches found. Please choose:</p>
- <ul class="list-unstyled px-3">${nameList}</ul>
- `;
- } else {
- filterByExactName(uniqueNames[0], query);
- }
-}
-
-// Track touch start time and position
-let touchStartTime = 0;
-let touchStartX = 0;
-let touchStartY = 0;
-
-function handleNameTouchStart(element, event) {
- touchStartTime = Date.now();
- touchStartX = event.touches[0].clientX;
- touchStartY = event.touches[0].clientY;
- 
- // Prevent default to stop potential scrolling
- event.preventDefault();
-}
-
-function handleNameTouchEnd(element, event) {
- const touchEndTime = Date.now();
- const touchDuration = touchEndTime - touchStartTime;
- 
- // Check if it was a quick tap (less than 300ms)
- if (touchDuration < 300) {
- event.preventDefault();
- event.stopPropagation();
- 
- // Get the name from the data attribute
- const name = element.getAttribute('data-name');
- 
- // Immediately filter
- filterByExactName(name);
- }
-}
-
-function handleNameClick(element, event) {
- // Prevent default click behavior
- event.preventDefault();
- event.stopPropagation();
- 
- // Get the name from the data attribute
- const name = element.getAttribute('data-name');
- 
- // Immediately filter
- filterByExactName(name);
-}
-
-function handleNameClick(element, event) {
- let debugDiv = document.getElementById('debug-log');
- 
- function mobileLog(message) {
- console.log(message);
- debugDiv.innerHTML += message + '<br>';
- }
-
- mobileLog('DEBUG: handleNameClick triggered');
- 
- // Prevent any default behaviors
- if (event) {
- event.preventDefault();
- event.stopPropagation();
- }
- 
- // Get the name from the data attribute
- const name = element.getAttribute('data-name');
- mobileLog(`DEBUG: selected name: ${name}`);
- 
- // Attempt to filter
- filterByExactName(name);
-}
-function filterByExactName(name, originalSearch = "") {
- const results = rotaCache.filter(entry => 
- entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
- entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
- );
- renderGroupedRota(results, true, name);
-}
-
-// New function to handle name selection
-function handleNameSelection(name) {
- // Prevent any default touch/click behaviors
- event.preventDefault();
- event.stopPropagation();
- 
- // Immediately filter by the selected name
- filterByExactName(name);
-}
-
-function filterByExactName(name, originalSearch = "") {
- const results = rotaCache.filter(entry => 
- entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
- entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
- );
- renderGroupedRota(results, true, name);
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    if (!query) return alert("Please enter a name to search.");
+    
+    isSearchMode = true;
+    currentSearchTerm = query;
+    updateJumpLinksVisibility();
+    toggleSearch(); // Close the search modal
+    
+    const matches = [];
+    const foundNames = new Set();
+    
+    rotaCache.forEach(entry => {
+        if (entry.crew1.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew1.trim());
+        if (entry.crew2.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew2.trim());
+        
+        if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
+            matches.push(entry);
+        }
+    });
+    
+    const uniqueNames = Array.from(foundNames);
+    
+    if (!matches.length) {
+        document.getElementById("rotaContent").innerHTML = `
+            <div class="search-results-header">Search results for "${query}"</div>
+            <p>No shifts found for that name.</p>
+        `;
+    } else if (uniqueNames.length > 1) {
+        const nameList = uniqueNames.map(name => 
+            `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`
+        ).join("");
+        
+        document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
+        <p>Multiple matches found. Please choose:</p>
+        <ul>${nameList}</ul>
+        `;
+    } else {
+        filterByExactName(uniqueNames[0], query);
+    }
 }
 
 function filterByExactName(name, originalSearch = "") {
