@@ -265,6 +265,7 @@ let isSearchMode = false;
 let currentSearchTerm = "";
 let touchStartX = 0;
 let touchEndX = 0;
+let touchStartTime = 0;
 let currentEvent = "";
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -767,14 +768,15 @@ function startAutoRefresh() {
     autoRefreshTimer = setInterval(() => {
         console.log("Auto-refreshing rota data...");
         preloadShifts(true); // Force refresh the data
-    },
-                                   AUTO_REFRESH_INTERVAL);
-// Also refresh when the page regains focus
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        console.log("Page is visible again, refreshing data...");
-        preloadShifts(true);
-    }
+    }, AUTO_REFRESH_INTERVAL);
+    
+    // Also refresh when the page regains focus
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            console.log("Page is visible again,
+                        refreshing data...");
+preloadShifts(true);
+}
 });
 }
 // --- Back to Top Button ---
@@ -802,15 +804,19 @@ if (newIndex >= 0 && newIndex < availableDays.length) {
 // --- Swipe Gestures ---
 function handleTouchStart(event) {
 touchStartX = event.touches[0].clientX;
+touchStartTime = Date.now();
 }
 function handleTouchMove(event) {
 touchEndX = event.touches[0].clientX;
 }
 function handleTouchEnd() {
 // Check if we have a swipe gesture
-const swipeThreshold = 50; // Minimum distance for a swipe
+const swipeThreshold = 100; // Increased from 50 to 100 pixels - requires longer swipe
 const swipeDistance = touchEndX - touchStartX;
-if (Math.abs(swipeDistance) > swipeThreshold) {
+const swipeDuration = Date.now() - touchStartTime;
+// Only consider it a swipe if it meets both distance and speed criteria
+if (Math.abs(swipeDistance) > swipeThreshold && swipeDuration < 500) {
+    // Quick swipe motion - navigate
     if (swipeDistance > 0) {
         // Swipe right - go to previous day
         navigateDay(-1);
@@ -823,6 +829,7 @@ if (Math.abs(swipeDistance) > swipeThreshold) {
 // Reset values
 touchStartX = 0;
 touchEndX = 0;
+touchStartTime = 0;
 }
 // --- Initialization ---
 window.onload = async () => {
@@ -841,13 +848,22 @@ startAutoRefresh();
 // Set up scroll event listener for back to top button
 window.addEventListener('scroll', handleScroll);
 
-// Set up swipe gesture handlers
+// Set up swipe gesture handlers with passive: true to improve scrolling performance
 const rotaContent = document.getElementById('rotaContent');
-rotaContent.addEventListener('touchstart', handleTouchStart, false);
-rotaContent.addEventListener('touchmove', handleTouchMove, false);
-rotaContent.addEventListener('touchend', handleTouchEnd, false);
+rotaContent.addEventListener('touchstart', handleTouchStart, { passive: true });
+rotaContent.addEventListener('touchmove', handleTouchMove, { passive: true });
+rotaContent.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+// Prevent swipe detection on clickable elements
+document.addEventListener('click', (e) => {
+    // If clicking on a link or button, reset swipe tracking
+    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button')) {
+        touchStartX = 0;
+        touchEndX = 0;
+        touchStartTime = 0;
+    }
+}, true);
 };
 </script>
 </body>
 </html>
-
