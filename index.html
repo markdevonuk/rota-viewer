@@ -212,9 +212,9 @@ html {
  margin-bottom: 1rem;
  }
 
-  .name-selector {
+ .name-selector {
  display: block;
- padding: 12px;
+ padding: 15px;
  text-align: center;
  cursor: pointer;
  -webkit-tap-highlight-color: transparent;
@@ -745,35 +745,8 @@ function handleSearchKeyPress(event) {
 }
 
 function runSearch() {
- // Create a debug log div if it doesn't exist
- let debugDiv = document.getElementById('debug-log');
- if (!debugDiv) {
- debugDiv = document.createElement('div');
- debugDiv.id = 'debug-log';
- debugDiv.style.position = 'fixed';
- debugDiv.style.bottom = '0';
- debugDiv.style.left = '0';
- debugDiv.style.width = '100%';
- debugDiv.style.backgroundColor = 'black';
- debugDiv.style.color = 'white';
- debugDiv.style.zIndex = '9999';
- debugDiv.style.padding = '10px';
- debugDiv.style.fontSize = '12px';
- document.body.appendChild(debugDiv);
- }
-
- // Logging function
- function mobileLog(message) {
- console.log(message);
- debugDiv.innerHTML += message + '<br>';
- }
-
- mobileLog('DEBUG: runSearch started');
- 
  const query = document.getElementById("searchInput").value.trim().toLowerCase();
  if (!query) return alert("Please enter a name to search.");
- 
- mobileLog(`DEBUG: Search query: ${query}`);
  
  isSearchMode = true;
  currentSearchTerm = query;
@@ -797,8 +770,6 @@ entry.crew2.toLowerCase().includes(query)) {
  
  const uniqueNames = Array.from(foundNames);
  
- mobileLog(`DEBUG: Found ${uniqueNames.length} unique names`);
- 
  if (!matches.length) {
  document.getElementById("rotaContent").innerHTML = `
  <div class="search-results-header">Search results for "${query}"</div>
@@ -810,6 +781,8 @@ entry.crew2.toLowerCase().includes(query)) {
    <div 
      class="btn btn-primary btn-lg w-100 mb-2 name-selector" 
      data-name="${name.replace(/'/g, "\\'")}"
+     ontouchstart="handleNameTouchStart(this, event)"
+     ontouchend="handleNameTouchEnd(this, event)"
      onclick="handleNameClick(this, event)"
    >${name}</div>
  </li>`
@@ -823,6 +796,49 @@ entry.crew2.toLowerCase().includes(query)) {
  } else {
  filterByExactName(uniqueNames[0], query);
  }
+}
+
+// Track touch start time and position
+let touchStartTime = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+
+function handleNameTouchStart(element, event) {
+ touchStartTime = Date.now();
+ touchStartX = event.touches[0].clientX;
+ touchStartY = event.touches[0].clientY;
+ 
+ // Prevent default to stop potential scrolling
+ event.preventDefault();
+}
+
+function handleNameTouchEnd(element, event) {
+ const touchEndTime = Date.now();
+ const touchDuration = touchEndTime - touchStartTime;
+ 
+ // Check if it was a quick tap (less than 300ms)
+ if (touchDuration < 300) {
+ event.preventDefault();
+ event.stopPropagation();
+ 
+ // Get the name from the data attribute
+ const name = element.getAttribute('data-name');
+ 
+ // Immediately filter
+ filterByExactName(name);
+ }
+}
+
+function handleNameClick(element, event) {
+ // Prevent default click behavior
+ event.preventDefault();
+ event.stopPropagation();
+ 
+ // Get the name from the data attribute
+ const name = element.getAttribute('data-name');
+ 
+ // Immediately filter
+ filterByExactName(name);
 }
 
 function handleNameClick(element, event) {
