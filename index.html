@@ -191,6 +191,36 @@ html {
   touch-action: pan-y;
   user-select: none;
 }
+  /* Add these styles at the end of the existing <style> block */
+.search-results-header {
+ background-color: #f8f9fa;
+ padding: 1rem;
+ border-radius: 8px;
+ margin-bottom: 1.5rem;
+ font-size: 1.2rem;
+ font-weight: bold;
+}
+
+/* Improve mobile button/link usability */
+@media (max-width: 768px) {
+ .search-results-header {
+ padding: 1rem;
+ font-size: 1rem;
+ }
+ 
+ .search-results-header + p {
+ margin-bottom: 1rem;
+ }
+ 
+ .list-unstyled li {
+ margin-bottom: 0.5rem;
+ }
+ 
+ .list-unstyled .btn {
+ padding: 0.75rem 1rem;
+ font-size: 1rem;
+ }
+}
 </style>
 </head>
 <body>
@@ -699,48 +729,52 @@ function handleSearchKeyPress(event) {
 }
 
 function runSearch() {
-    const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    if (!query) return alert("Please enter a name to search.");
-    
-    isSearchMode = true;
-    currentSearchTerm = query;
-    updateJumpLinksVisibility();
-    toggleSearch(); // Close the search modal
-    
-    const matches = [];
-    const foundNames = new Set();
-    
-    rotaCache.forEach(entry => {
-        if (entry.crew1.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew1.trim());
-        if (entry.crew2.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew2.trim());
-        
-        if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
-            matches.push(entry);
-        }
-    });
-    
-    const uniqueNames = Array.from(foundNames);
-    
-    if (!matches.length) {
-        document.getElementById("rotaContent").innerHTML = `
-            <div class="search-results-header">Search results for "${query}"</div>
-            <p>No shifts found for that name.</p>
-        `;
-    } else if (uniqueNames.length > 1) {
-        const nameList = uniqueNames.map(name => 
-            `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`
-        ).join("");
-        
-        document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
-        <p>Multiple matches found. Please choose:</p>
-        <ul>${nameList}</ul>
-        `;
-    } else {
-        filterByExactName(uniqueNames[0], query);
-    }
+ const query = document.getElementById("searchInput").value.trim().toLowerCase();
+ if (!query) return alert("Please enter a name to search.");
+ 
+ isSearchMode = true;
+ currentSearchTerm = query;
+ updateJumpLinksVisibility();
+ toggleSearch(); // Close the search modal
+ 
+ const matches = [];
+ const foundNames = new Set();
+ 
+ rotaCache.forEach(entry => {
+ if (entry.crew1.toLowerCase().includes(query)) 
+ foundNames.add(entry.crew1.trim());
+ if (entry.crew2.toLowerCase().includes(query)) 
+ foundNames.add(entry.crew2.trim());
+ 
+ if (entry.crew1.toLowerCase().includes(query) || 
+entry.crew2.toLowerCase().includes(query)) {
+ matches.push(entry);
+ }
+ });
+ 
+ const uniqueNames = Array.from(foundNames);
+ 
+ if (!matches.length) {
+ document.getElementById("rotaContent").innerHTML = `
+ <div class="search-results-header">Search results for "${query}"</div>
+ <p>No shifts found for that name.</p>
+ `;
+ } else if (uniqueNames.length > 1) {
+ const nameList = uniqueNames.map(name => 
+ `<li>
+   <button class="btn btn-primary btn-lg w-100 mb-2" 
+   onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</button>
+ </li>`
+ ).join("");
+ 
+ document.getElementById("rotaContent").innerHTML = `
+ <div class="search-results-header">Search results for "${query}"</div>
+ <p>Multiple matches found. Please choose:</p>
+ <ul class="list-unstyled px-3">${nameList}</ul>
+ `;
+ } else {
+ filterByExactName(uniqueNames[0], query);
+ }
 }
 
 function filterByExactName(name, originalSearch = "") {
