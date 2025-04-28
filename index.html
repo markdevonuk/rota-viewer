@@ -698,58 +698,130 @@ function handleSearchKeyPress(event) {
     }
 }
 
+// Improved search result rendering
 function runSearch() {
-    const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    if (!query) return alert("Please enter a name to search.");
-    
-    isSearchMode = true;
-    currentSearchTerm = query;
-    updateJumpLinksVisibility();
-    toggleSearch(); // Close the search modal
-    
-    const matches = [];
-    const foundNames = new Set();
-    
-    rotaCache.forEach(entry => {
-        if (entry.crew1.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew1.trim());
-        if (entry.crew2.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew2.trim());
-        
-        if (entry.crew1.toLowerCase().includes(query) || entry.crew2.toLowerCase().includes(query)) {
-            matches.push(entry);
-        }
-    });
-    
-    const uniqueNames = Array.from(foundNames);
-    
-    if (!matches.length) {
-        document.getElementById("rotaContent").innerHTML = `
-            <div class="search-results-header">Search results for "${query}"</div>
-            <p>No shifts found for that name.</p>
-        `;
-    } else if (uniqueNames.length > 1) {
-        const nameList = uniqueNames.map(name => 
-            `<li><a href="#" onclick="filterByExactName('${name.replace(/'/g, "\\'")}')">${name}</a></li>`
-        ).join("");
-        
-        document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
-        <p>Multiple matches found. Please choose:</p>
-        <ul>${nameList}</ul>
-        `;
-    } else {
-        filterByExactName(uniqueNames[0], query);
-    }
+ const query = document.getElementById("searchInput").value.trim().toLowerCase();
+ if (!query) return alert("Please enter a name to search.");
+ 
+ isSearchMode = true;
+ currentSearchTerm = query;
+ updateJumpLinksVisibility();
+ toggleSearch(); // Close the search modal
+ 
+ const matches = [];
+ const foundNames = new Set();
+ 
+ rotaCache.forEach(entry => {
+ if (entry.crew1.toLowerCase().includes(query)) 
+ foundNames.add(entry.crew1.trim());
+ if (entry.crew2.toLowerCase().includes(query)) 
+ foundNames.add(entry.crew2.trim());
+ 
+ if (entry.crew1.toLowerCase().includes(query) || 
+entry.crew2.toLowerCase().includes(query)) {
+ matches.push(entry);
+ }
+ });
+ 
+ const uniqueNames = Array.from(foundNames);
+ 
+ if (!matches.length) {
+ document.getElementById("rotaContent").innerHTML = `
+ <div class="search-results-header">Search results for "${query}"</div>
+ <p class="text-center mt-4">No shifts found for that name.</p>
+ `;
+ } else if (uniqueNames.length > 1) {
+ // Improved mobile-friendly name selection
+ const nameList = uniqueNames.map(name => `
+ <div class="list-group-item list-group-item-action p-3 mb-2" 
+onclick="safeFilterByExactName('${name.replace(/'/g, "\\'")}')" 
+role="button" tabindex="0">
+ <div class="d-flex w-100 justify-content-between align-items-center">
+ <h5 class="mb-1">${name}</h5>
+ <span class="badge bg-primary rounded-pill">
+ ${matches.filter(m => 
+m.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+m.crew2.trim().toLowerCase() === name.trim().toLowerCase()).length} 
+shifts
+ </span>
+ </div>
+ </div>
+ `).join("");
+ 
+ document.getElementById("rotaContent").innerHTML = `
+ <div class="search-results-header">Search results for "${query}"</div>
+ <div class="container mt-4">
+ <div class="list-group">
+ ${nameList}
+ </div>
+ </div>
+ `;
+ } else {
+ safeFilterByExactName(uniqueNames[0], query);
+ }
 }
 
-function filterByExactName(name, originalSearch = "") {
-    const results = rotaCache.filter(entry => 
-        entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
-        entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
-    );
-    renderGroupedRota(results, true, name);
+// Safe name filtering with improved touch handling
+function safeFilterByExactName(name, originalSearch = "") {
+ // Prevent any potential touch/swipe interference
+ touchStartX = 0;
+ touchEndX = 0;
+ touchStartTime = 0;
+ 
+ // Slight delay to ensure clean touch interaction
+ setTimeout(() => {
+ const results = rotaCache.filter(entry => 
+ entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+ entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+ );
+ renderGroupedRota(results, true, name);
+ }, 100);
 }
+
+// Modify existing touch event handlers to be more robust
+function handleTouchStart(event) {
+ // Only track touch start if not on a clickable element
+ const target = event.target;
+ if (!target.closest('a, button, .list-group-item')) {
+ touchStartX = event.touches[0].clientX;
+ touchStartTime = Date.now();
+ }
+}
+
+function handleTouchEnd() {
+ // More strict swipe detection
+ const swipeThreshold = 100;
+ const swipeDistance = touchEndX - touchStartX;
+ const swipeDuration = Date.now() - touchStartTime;
+ 
+ // Only consider it a swipe if it meets both distance and speed criteria
+ if (Math.abs(swipeDistance) > swipeThreshold && swipeDuration < 500) {
+ if (swipeDistance > 0) {
+ // Swipe right - go to previous day
+ navigateDay(-1);
+ } else {
+ // Swipe left - go to next day
+ navigateDay(1);
+ }
+ }
+ 
+ // Reset touch tracking
+ touchStartX = 0;
+ touchEndX = 0;
+ touchStartTime = 0;
+}
+
+// Additional prevention of accidental navigation
+document.addEventListener('click', (e) => {
+ // Ensure clicks on interactive elements don't trigger unintended actions
+ const target = e.target;
+ if (target.closest('.list-group-item, a, button')) {
+ touchStartX = 0;
+ touchEndX = 0;
+ touchStartTime = 0;
+ }
+}, true);
+
 
 function forceReloadRota() {
     preloadShifts(true);
