@@ -445,18 +445,39 @@ function updateJumpLinksVisibility() {
 function setupTouchHandlers() {
     const rotaContent = document.getElementById('rotaContent');
     
+    // Add global click handler for search name items
+    document.addEventListener('click', function(event) {
+        const nameItem = event.target.closest('.search-name-item');
+        if (nameItem) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const name = nameItem.getAttribute('data-name') || 
+                         nameItem.textContent.trim().split('\n')[0];
+            handleNameSelection(name);
+        }
+    }, true);
+
     // Tracking variables for touch interactions
     let touchStartX = 0;
     let touchStartY = 0;
     let touchEndX = 0;
     let touchEndY = 0;
     let isScrolling = false;
-    
+    let touchStartTime = 0;
+
     rotaContent.addEventListener('touchstart', (event) => {
+        // Prevent interference with clickable elements
+        const targetElement = event.target;
+        if (targetElement.closest('.search-name-item, a, button')) {
+            return;
+        }
+
         // Record initial touch coordinates
         touchStartX = event.touches[0].clientX;
         touchStartY = event.touches[0].clientY;
         isScrolling = false;
+        touchStartTime = Date.now();
     }, { passive: true });
     
     rotaContent.addEventListener('touchmove', (event) => {
@@ -472,19 +493,30 @@ function setupTouchHandlers() {
             isScrolling = true;
         }
         
-        // If it's a near-horizontal movement and not scrolling, prevent default
-        if (!isScrolling && deltaX > deltaY && deltaX > 50) {
+        // If it's a near-horizontal movement and not on a clickable element, prevent default
+        const targetElement = event.target;
+        if (!isScrolling && 
+            !targetElement.closest('.search-name-item, a, button') && 
+            deltaX > deltaY && 
+            deltaX > 50) {
             event.preventDefault();
         }
     }, { passive: false });
     
     rotaContent.addEventListener('touchend', (event) => {
+        // Prevent interference with clickable elements
+        const targetElement = event.target;
+        if (targetElement.closest('.search-name-item, a, button')) {
+            return;
+        }
+
         // Check for swipe if not scrolling
         if (!isScrolling) {
             const deltaX = touchEndX - touchStartX;
+            const swipeDuration = Date.now() - touchStartTime;
             
-            // Swipe detection
-            if (Math.abs(deltaX) > 100) {
+            // Swipe detection with duration check
+            if (Math.abs(deltaX) > 100 && swipeDuration < 500) {
                 if (deltaX > 0) {
                     navigateDay(-1); // Swipe right, go to previous day
                 } else {
@@ -499,6 +531,7 @@ function setupTouchHandlers() {
         touchEndX = 0;
         touchEndY = 0;
         isScrolling = false;
+        touchStartTime = 0;
     }, { passive: true });
 }
 
@@ -566,11 +599,11 @@ function runSearch() {
 }
 
 // Name Selection Handler
+// Modify name selection to handle both click and touch
 function handleNameSelection(name, originalSearch = "") {
     // Prevent any potential touch/swipe interference
     touchStartX = 0;
     touchEndX = 0;
-    touchStartTime = 0;
     
     // Ensure search mode is active
     isSearchMode = true;
@@ -582,7 +615,7 @@ function handleNameSelection(name, originalSearch = "") {
             entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
         );
         renderGroupedRota(results, true, name);
-    }, 100);
+    }, 50);
 }
 
 // Keep for backwards compatibility
