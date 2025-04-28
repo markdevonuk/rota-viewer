@@ -279,9 +279,6 @@ let touchStartTime = 0;
 let currentEvent = "";
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Touch interaction tracking
-let touchTrackingEnabled = true;
-
 // Get event from URL parameter
 function getEventFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -395,86 +392,6 @@ function getCardClass(section, role) {
     return "";
 }
 
-// Touch Interaction Handling
-function setupTouchHandlers() {
-    const rotaContent = document.getElementById('rotaContent');
-    
-    // Variables to track touch interactions
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchEndX = 0;
-    let touchEndY = 0;
-    let touchStartTime = 0;
-    
-    // Prevent default touch behaviors on the entire rota content
-    rotaContent.addEventListener('touchstart', (event) => {
-        if (!touchTrackingEnabled) return true;
-
-        touchStartX = event.touches[0].clientX;
-        touchStartY = event.touches[0].clientY;
-        touchStartTime = Date.now();
-        
-        // Check if the touch is on a clickable element
-        const targetElement = document.elementFromPoint(
-            event.touches[0].clientX, 
-            event.touches[0].clientY
-        );
-        
-        if (targetElement && 
-            (targetElement.closest('.list-group-item') || 
-            targetElement.closest('a') || 
-            targetElement.closest('button'))) {
-            // If on a clickable element, do nothing special
-            return true;
-        }
-        
-        // Prevent default for non-clickable areas
-        event.preventDefault();
-    }, { passive: false });
-    
-    rotaContent.addEventListener('touchmove', (event) => {
-        if (!touchTrackingEnabled) return true;
-
-        touchEndX = event.touches[0].clientX;
-        touchEndY = event.touches[0].clientY;
-        
-        // Calculate swipe
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-        
-        // Determine if this is a horizontal swipe
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-            event.preventDefault();
-        }
-    }, { passive: false });
-    
-    rotaContent.addEventListener('touchend', (event) => {
-        if (!touchTrackingEnabled) return true;
-
-        const swipeDuration = Date.now() - touchStartTime;
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-        
-        // Check for swipe
-        if (Math.abs(deltaX) > 100 && swipeDuration < 500) {
-            // Horizontal swipe detected
-            if (deltaX > 0) {
-                navigateDay(-1); // Swipe right, go to previous day
-            } else {
-                navigateDay(1);  // Swipe left, go to next day
-            }
-            event.preventDefault();
-        }
-        
-        // Reset touch tracking
-        touchStartX = 0;
-        touchStartY = 0;
-        touchEndX = 0;
-        touchEndY = 0;
-        touchStartTime = 0;
-    }, { passive: false });
-}
-
 // Caching Functions
 function saveCacheToStorage() {
     // Use event-specific cache key
@@ -525,7 +442,137 @@ function updateJumpLinksVisibility() {
     shiftLinks.style.display = isSearchMode ? "none" : "block";
 }
 
-// Shifts Loading
+// Touch Interaction Handlers
+function setupTouchHandlers() {
+    const rotaContent = document.getElementById('rotaContent');
+    
+    // Prevent default touch behaviors
+    rotaContent.addEventListener('touchstart', (event) => {
+        // Allow interaction with specific elements
+        if (event.target.closest('.search-name-item, a, button')) {
+            return;
+        }
+        event.preventDefault();
+    }, { passive: false });
+    
+    // Prevent scroll on interactive elements
+    rotaContent.addEventListener('touchmove', (event) => {
+        if (event.target.closest('.search-name-item, a, button')) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+}
+
+// Search Function
+function runSearch() {
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    if (!query) return alert("Please enter a name to search.");
+    
+    isSearchMode = true;
+    currentSearchTerm = query;
+    updateJumpLinksVisibility();
+    toggleSearch(); // Close the search modal
+    
+    const matches = [];
+    const foundNames = new Set();
+    
+    rotaCache.forEach(entry => {
+        if (entry.crew1.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew1.trim());
+        if (entry.crew2.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew2.trim());
+        
+        if (entry.crew1.toLowerCase().includes(query) || 
+            entry.crew2.toLowerCase().includes(query)) {
+            matches.push(entry);
+        }
+    });
+    
+    const uniqueNames = Array.from(foundNames);
+    
+    if (!matches.length) {
+        document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
+        <p class="text-center mt-4">No shifts found for that name.</p>
+        `;
+    } else if (uniqueNames.length > 1) {
+        // Completely redesigned name selection with explicit handlers
+        const nameList = uniqueNames.map(name => `
+        <div class="list-group-item list-group-item-action p-3 mb-2 search-name-item" 
+             onclick="handleNameSelection('${name.replace(/'/g, "\\'")}')"
+             role="button" tabindex="0">
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <h5 class="mb-1">${name}</h5>
+                <span class="badge bg-primary rounded-pill">
+                ${matches.filter(m => 
+                    m.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+                    m.crew2.trim().toLowerCase() === name.trim().toLowerCase()).length} 
+                shifts
+                </span>
+            </div>
+        </div>
+        `).join("");
+        
+        document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
+        <div class="container mt-4">
+            <div class="list-group">
+                ${nameList}
+            </div>
+        </div>
+        `;
+    } else {
+        handleNameSelection(uniqueNames[0], query);
+    }
+}
+
+// Name Selection Handler
+function handleNameSelection(name, originalSearch = "") {
+    // Prevent any potential touch/swipe interference
+    touchStartX = 0;
+    touchEndX = 0;
+    touchStartTime = 0;
+    
+    // Ensure search mode is active
+    isSearchMode = true;
+    
+    // Slight delay to ensure clean touch interaction
+    setTimeout(() => {
+        const results = rotaCache.filter(entry => 
+            entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+            entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+        renderGroupedRota(results, true, name);
+    }, 100);
+}
+
+// Keep for backwards compatibility
+function safeFilterByExactName(name, originalSearch = "") {
+    return handleNameSelection(name, originalSearch);
+}
+
+// Toggle Search Modal
+function toggleSearch() {
+    const modal = document.querySelector('.search-modal');
+    const backdrop = document.querySelector('.search-backdrop');
+    const isActive = modal.classList.contains('active');
+    
+    if (isActive) {
+        modal.classList.remove('active');
+        backdrop.classList.remove('active');
+    } else {
+        modal.classList.add('active');
+        backdrop.classList.add('active');
+        document.getElementById('searchInput').focus();
+    }
+}
+
+function handleSearchKeyPress(event) {
+    if (event.key === 'Enter') {
+        runSearch();
+    }
+}
+  // Remaining Functions
 async function preloadShifts(force = false) {
     // Show loading state
     document.getElementById("rotaContent").innerHTML = `
@@ -646,7 +693,6 @@ function updateStatus(msg) {
     document.getElementById("dataStatus").textContent = msg;
 }
 
-// Rota Display
 function loadRota() {
     // Don't try to load if there's no data
     if (!rotaCache || rotaCache.length === 0) {
@@ -654,7 +700,7 @@ function loadRota() {
         return;
     }
     
-    isSearchMode =false;
+    isSearchMode = false;
     updateJumpLinksVisibility();
     
     const daySelect = document.getElementById("daySelect");
@@ -763,165 +809,6 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
     document.getElementById("rotaContent").innerHTML = html;
 }
 
-// Search Functions
-function setupSearchHandlers() {
-    const rotaContent = document.getElementById('rotaContent');
-    touchTrackingEnabled = true;
-
-    // Enhanced search result handling
-    rotaContent.addEventListener('click', function(event) {
-        const nameItem = event.target.closest('.search-name-item');
-        if (nameItem) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const name = nameItem.getAttribute('data-name');
-            safeFilterByExactName(name);
-        }
-    });
-}
-
-function runSearch() {
-    const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    if (!query) return alert("Please enter a name to search.");
-    
-    isSearchMode = true;
-    currentSearchTerm = query;
-    updateJumpLinksVisibility();
-    toggleSearch(); // Close the search modal
-    
-    const matches = [];
-    const foundNames = new Set();
-    
-    rotaCache.forEach(entry => {
-        if (entry.crew1.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew1.trim());
-        if (entry.crew2.toLowerCase().includes(query)) 
-            foundNames.add(entry.crew2.trim());
-        
-        if (entry.crew1.toLowerCase().includes(query) || 
-            entry.crew2.toLowerCase().includes(query)) {
-            matches.push(entry);
-        }
-    });
-    
-    const uniqueNames = Array.from(foundNames);
-    
-    if (!matches.length) {
-        document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
-        <p class="text-center mt-4">No shifts found for that name.</p>
-        `;
-    } else if (uniqueNames.length > 1) {
-        // Completely redesigned name selection with explicit handlers
-        const nameList = uniqueNames.map(name => `
-        <div class="list-group-item list-group-item-action p-3 mb-2 search-name-item" 
-             onclick="handleNameSelection('${name.replace(/'/g, "\\'")}')"
-             role="button" tabindex="0">
-            <div class="d-flex w-100 justify-content-between align-items-center">
-                <h5 class="mb-1">${name}</h5>
-                <span class="badge bg-primary rounded-pill">
-                ${matches.filter(m => 
-                    m.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
-                    m.crew2.trim().toLowerCase() === name.trim().toLowerCase()).length} 
-                shifts
-                </span>
-            </div>
-        </div>
-        `).join("");
-        
-        document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
-        <div class="container mt-4">
-            <div class="list-group">
-                ${nameList}
-            </div>
-        </div>
-        `;
-    } else {
-        handleNameSelection(uniqueNames[0], query);
-    }
-}
-
-// New centralized name selection handler
-function handleNameSelection(name, originalSearch = "") {
-    // Prevent any potential touch/swipe interference
-    touchStartX = 0;
-    touchEndX = 0;
-    touchStartTime = 0;
-    
-    // Ensure search mode is active
-    isSearchMode = true;
-    
-    // Slight delay to ensure clean touch interaction
-    setTimeout(() => {
-        const results = rotaCache.filter(entry => 
-            entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
-            entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
-        );
-        renderGroupedRota(results, true, name);
-    }, 100);
-}
-
-
-function toggleSearch() {
-    const modal = document.querySelector('.search-modal');
-    const backdrop = document.querySelector('.search-backdrop');
-    const isActive = modal.classList.contains('active');
-    
-    if (isActive) {
-        modal.classList.remove('active');
-        backdrop.classList.remove('active');
-    } else {
-        modal.classList.add('active');
-        backdrop.classList.add('active');
-        document.getElementById('searchInput').focus();
-    }
-}
-
-function handleSearchKeyPress(event) {
-    if (event.key === 'Enter') {
-        runSearch();
-    }
-}
-
-// Utility Functions
-function forceReloadRota() {
-    preloadShifts(true);
-}
-
-function clearRotaCache() {
-    if (confirm("Clear cache and reload?")) {
-        // Clear only event-specific cache
-        localStorage.removeItem(`rotaCache_${currentEvent}`);
-        localStorage.removeItem(`rotaCacheTimestamp_${currentEvent}`);
-        localStorage.removeItem(`selectedDay_${currentEvent}`);
-        location.reload();
-    }
-}
-
-// Auto Refresh
-function startAutoRefresh() {
-    // Clear any existing timers first
-    if (autoRefreshTimer) {
-        clearInterval(autoRefreshTimer);
-    }
-    
-    // Set up the auto-refresh timer to run every 5 minutes
-    autoRefreshTimer = setInterval(() => {
-        console.log("Auto-refreshing rota data...");
-        preloadShifts(true); // Force refresh the data
-    }, AUTO_REFRESH_INTERVAL);
-    
-    // Also refresh when the page regains focus
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            console.log("Page is visible again, refreshing data...");
-            preloadShifts(true);
-        }
-    });
-}
-
 // Back to Top Button
 function handleScroll() {
     const backToTopBtn = document.querySelector('.back-to-top');
@@ -947,12 +834,66 @@ function navigateDay(direction) {
     }
 }
 
-// Modify window onload to ensure handlers are set up
+// Auto Refresh
+function startAutoRefresh() {
+    // Clear any existing timers first
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+    }
+    
+    // Set up the auto-refresh timer to run every 5 minutes
+    autoRefreshTimer = setInterval(() => {
+        console.log("Auto-refreshing rota data...");
+        preloadShifts(true); // Force refresh the data
+    }, AUTO_REFRESH_INTERVAL);
+    
+    // Also refresh when the page regains focus
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            console.log("Page is visible again, refreshing data...");
+            preloadShifts(true);
+        }
+    });
+}
+
+// Utility Functions
+function forceReloadRota() {
+    preloadShifts(true);
+}
+
+function clearRotaCache() {
+    if (confirm("Clear cache and reload?")) {
+        // Clear only event-specific cache
+        localStorage.removeItem(`rotaCache_${currentEvent}`);
+        localStorage.removeItem(`rotaCacheTimestamp_${currentEvent}`);
+        localStorage.removeItem(`selectedDay_${currentEvent}`);
+        location.reload();
+    }
+}
+
+// Initialization
 const originalOnload = window.onload;
-window.onload = function() {
+window.onload = async function() {
+    // Run original onload if it exists
     if (originalOnload) originalOnload();
     
-    // Setup touch handlers
+    // Get event from URL and set up page
+    currentEvent = getEventFromURL();
+    updatePageHeader(currentEvent);
+    
+    // Set current year in copyright
+    setCurrentYear();
+    
+    // Load shifts
+    await preloadShifts();
+    
+    // Start auto-refresh
+    startAutoRefresh();
+    
+    // Set up scroll event listener for back to top button
+    window.addEventListener('scroll', handleScroll);
+    
+    // Setup touch and search handlers
     setupTouchHandlers();
     
     // Attach global click handler for name selection
