@@ -813,11 +813,11 @@ function runSearch() {
         <p class="text-center mt-4">No shifts found for that name.</p>
         `;
     } else if (uniqueNames.length > 1) {
-        // Improved mobile-friendly name selection
+        // Completely redesigned name selection with explicit handlers
         const nameList = uniqueNames.map(name => `
         <div class="list-group-item list-group-item-action p-3 mb-2 search-name-item" 
-        data-name="${name.replace(/'/g, "\\'")}" 
-        role="button" tabindex="0">
+             onclick="handleNameSelection('${name.replace(/'/g, "\\'")}')"
+             role="button" tabindex="0">
             <div class="d-flex w-100 justify-content-between align-items-center">
                 <h5 class="mb-1">${name}</h5>
                 <span class="badge bg-primary rounded-pill">
@@ -839,13 +839,19 @@ function runSearch() {
         </div>
         `;
     } else {
-        safeFilterByExactName(uniqueNames[0], query);
+        handleNameSelection(uniqueNames[0], query);
     }
 }
 
-function safeFilterByExactName(name, originalSearch = "") {
-    // Disable touch tracking temporarily
-    touchTrackingEnabled = false;
+// New centralized name selection handler
+function handleNameSelection(name, originalSearch = "") {
+    // Prevent any potential touch/swipe interference
+    touchStartX = 0;
+    touchEndX = 0;
+    touchStartTime = 0;
+    
+    // Ensure search mode is active
+    isSearchMode = true;
     
     // Slight delay to ensure clean touch interaction
     setTimeout(() => {
@@ -854,13 +860,9 @@ function safeFilterByExactName(name, originalSearch = "") {
             entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
         );
         renderGroupedRota(results, true, name);
-        
-        // Re-enable touch tracking after rendering
-        setTimeout(() => {
-            touchTrackingEnabled = true;
-        }, 300);
-    }, 50);
+    }, 100);
 }
+
 
 function toggleSearch() {
     const modal = document.querySelector('.search-modal');
@@ -945,31 +947,26 @@ function navigateDay(direction) {
     }
 }
 
-// Initialization
+// Modify window onload to ensure handlers are set up
 const originalOnload = window.onload;
-window.onload = async function() {
-    // Run original onload if it exists
+window.onload = function() {
     if (originalOnload) originalOnload();
     
-    // Get event from URL and set up page
-    currentEvent = getEventFromURL();
-    updatePageHeader(currentEvent);
-    
-    // Set current year in copyright
-    setCurrentYear();
-    
-    // Load shifts
-    await preloadShifts();
-    
-    // Start auto-refresh
-    startAutoRefresh();
-    
-    // Set up scroll event listener for back to top button
-    window.addEventListener('scroll', handleScroll);
-    
-    // Setup touch and search handlers
+    // Setup touch handlers
     setupTouchHandlers();
-    setupSearchHandlers();
+    
+    // Attach global click handler for name selection
+    document.addEventListener('click', function(event) {
+        const nameItem = event.target.closest('.search-name-item');
+        if (nameItem) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const name = nameItem.getAttribute('data-name') || 
+                         nameItem.textContent.trim().split('\n')[0];
+            handleNameSelection(name);
+        }
+    }, true);
 };
 
 </script>
