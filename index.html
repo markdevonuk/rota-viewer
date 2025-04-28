@@ -263,9 +263,11 @@ html {
   </div>
 </div>
 
+
 <script>
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
+
 let rotaCache = [];
 let availableDays = [];
 let autoRefreshTimer = null;
@@ -276,6 +278,9 @@ let touchEndX = 0;
 let touchStartTime = 0;
 let currentEvent = "";
 const AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Touch interaction tracking
+let touchTrackingEnabled = true;
 
 // Get event from URL parameter
 function getEventFromURL() {
@@ -390,7 +395,87 @@ function getCardClass(section, role) {
     return "";
 }
 
-// --- Loading ---
+// Touch Interaction Handling
+function setupTouchHandlers() {
+    const rotaContent = document.getElementById('rotaContent');
+    
+    // Variables to track touch interactions
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let touchStartTime = 0;
+    
+    // Prevent default touch behaviors on the entire rota content
+    rotaContent.addEventListener('touchstart', (event) => {
+        if (!touchTrackingEnabled) return true;
+
+        touchStartX = event.touches[0].clientX;
+        touchStartY = event.touches[0].clientY;
+        touchStartTime = Date.now();
+        
+        // Check if the touch is on a clickable element
+        const targetElement = document.elementFromPoint(
+            event.touches[0].clientX, 
+            event.touches[0].clientY
+        );
+        
+        if (targetElement && 
+            (targetElement.closest('.list-group-item') || 
+            targetElement.closest('a') || 
+            targetElement.closest('button'))) {
+            // If on a clickable element, do nothing special
+            return true;
+        }
+        
+        // Prevent default for non-clickable areas
+        event.preventDefault();
+    }, { passive: false });
+    
+    rotaContent.addEventListener('touchmove', (event) => {
+        if (!touchTrackingEnabled) return true;
+
+        touchEndX = event.touches[0].clientX;
+        touchEndY = event.touches[0].clientY;
+        
+        // Calculate swipe
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // Determine if this is a horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+    
+    rotaContent.addEventListener('touchend', (event) => {
+        if (!touchTrackingEnabled) return true;
+
+        const swipeDuration = Date.now() - touchStartTime;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // Check for swipe
+        if (Math.abs(deltaX) > 100 && swipeDuration < 500) {
+            // Horizontal swipe detected
+            if (deltaX > 0) {
+                navigateDay(-1); // Swipe right, go to previous day
+            } else {
+                navigateDay(1);  // Swipe left, go to next day
+            }
+            event.preventDefault();
+        }
+        
+        // Reset touch tracking
+        touchStartX = 0;
+        touchStartY = 0;
+        touchEndX = 0;
+        touchEndY = 0;
+        touchStartTime = 0;
+    }, { passive: false });
+}
+
+// Caching Functions
 function saveCacheToStorage() {
     // Use event-specific cache key
     const cacheKey = `rotaCache_${currentEvent}`;
@@ -440,15 +525,16 @@ function updateJumpLinksVisibility() {
     shiftLinks.style.display = isSearchMode ? "none" : "block";
 }
 
+// Shifts Loading
 async function preloadShifts(force = false) {
     // Show loading state
     document.getElementById("rotaContent").innerHTML = `
-        <div class="initial-loading">
-            <div class="spinner-border text-primary mb-3" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <div>Loading rota data...</div>
+    <div class="initial-loading">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
         </div>
+        <div>Loading rota data...</div>
+    </div>
     `;
     
     rotaCache = loadCacheFromStorage();
@@ -515,11 +601,11 @@ async function preloadShifts(force = false) {
         console.error("Error loading rota data:", err);
         updateStatus("Error: " + err.message);
         document.getElementById("rotaContent").innerHTML = `
-            <div class="alert alert-danger">
-                <h4>Error Loading Data</h4>
-                <p>${err.message}</p>
-                <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
-            </div>
+        <div class="alert alert-danger">
+            <h4>Error Loading Data</h4>
+            <p>${err.message}</p>
+            <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
+        </div>
         `;
         document.getElementById("daySelect").disabled = true;
     }
@@ -560,7 +646,7 @@ function updateStatus(msg) {
     document.getElementById("dataStatus").textContent = msg;
 }
 
-// --- Rota Display ---
+// Rota Display
 function loadRota() {
     // Don't try to load if there's no data
     if (!rotaCache || rotaCache.length === 0) {
@@ -568,7 +654,7 @@ function loadRota() {
         return;
     }
     
-    isSearchMode = false;
+    isSearchMode =false;
     updateJumpLinksVisibility();
     
     const daySelect = document.getElementById("daySelect");
@@ -583,7 +669,7 @@ function loadRota() {
     localStorage.setItem(savedDayKey, day);
     
     document.getElementById("rotaContent").innerHTML = 
-        '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     
     const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
     
@@ -636,7 +722,8 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
     }
     
     const groupedByShift = { Early: [], Late: [], Night: [], Other: [] };
-    data.forEach(entry => groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
+    data.forEach(entry => 
+        groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
     
     let html = "";
     for (const shiftType of ["Early", "Late", "Night", "Other"]) {
@@ -659,16 +746,16 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
         for (const section in groupedBySection) {
             html += `<div class="section-header">${section}</div><div class="row g-3 mb-4">`;
             html += groupedBySection[section].map(row => `
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm p-3 ${getCardClass(section, row.role)}">
-                    <div class="card-content">
-                        <h5>${row.role}</h5>
-                        <p><strong>Time:</strong> ${row.time}</p>
-                        <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
-                        <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm p-3 ${getCardClass(section, row.role)}">
+                        <div class="card-content">
+                            <h5>${row.role}</h5>
+                            <p><strong>Time:</strong> ${row.time}</p>
+                            <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
+                            <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
             `).join("");
             html += `</div>`;
         }
@@ -676,7 +763,105 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
     document.getElementById("rotaContent").innerHTML = html;
 }
 
-// --- Search Functions ---
+// Search Functions
+function setupSearchHandlers() {
+    const rotaContent = document.getElementById('rotaContent');
+    touchTrackingEnabled = true;
+
+    // Enhanced search result handling
+    rotaContent.addEventListener('click', function(event) {
+        const nameItem = event.target.closest('.search-name-item');
+        if (nameItem) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const name = nameItem.getAttribute('data-name');
+            safeFilterByExactName(name);
+        }
+    });
+}
+
+function runSearch() {
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    if (!query) return alert("Please enter a name to search.");
+    
+    isSearchMode = true;
+    currentSearchTerm = query;
+    updateJumpLinksVisibility();
+    toggleSearch(); // Close the search modal
+    
+    const matches = [];
+    const foundNames = new Set();
+    
+    rotaCache.forEach(entry => {
+        if (entry.crew1.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew1.trim());
+        if (entry.crew2.toLowerCase().includes(query)) 
+            foundNames.add(entry.crew2.trim());
+        
+        if (entry.crew1.toLowerCase().includes(query) || 
+            entry.crew2.toLowerCase().includes(query)) {
+            matches.push(entry);
+        }
+    });
+    
+    const uniqueNames = Array.from(foundNames);
+    
+    if (!matches.length) {
+        document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
+        <p class="text-center mt-4">No shifts found for that name.</p>
+        `;
+    } else if (uniqueNames.length > 1) {
+        // Improved mobile-friendly name selection
+        const nameList = uniqueNames.map(name => `
+        <div class="list-group-item list-group-item-action p-3 mb-2 search-name-item" 
+        data-name="${name.replace(/'/g, "\\'")}" 
+        role="button" tabindex="0">
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <h5 class="mb-1">${name}</h5>
+                <span class="badge bg-primary rounded-pill">
+                ${matches.filter(m => 
+                    m.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+                    m.crew2.trim().toLowerCase() === name.trim().toLowerCase()).length} 
+                shifts
+                </span>
+            </div>
+        </div>
+        `).join("");
+        
+        document.getElementById("rotaContent").innerHTML = `
+        <div class="search-results-header">Search results for "${query}"</div>
+        <div class="container mt-4">
+            <div class="list-group">
+                ${nameList}
+            </div>
+        </div>
+        `;
+    } else {
+        safeFilterByExactName(uniqueNames[0], query);
+    }
+}
+
+function safeFilterByExactName(name, originalSearch = "") {
+    // Disable touch tracking temporarily
+    touchTrackingEnabled = false;
+    
+    // Slight delay to ensure clean touch interaction
+    setTimeout(() => {
+        const results = rotaCache.filter(entry => 
+            entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+            entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+        renderGroupedRota(results, true, name);
+        
+        // Re-enable touch tracking after rendering
+        setTimeout(() => {
+            touchTrackingEnabled = true;
+        }, 300);
+    }, 50);
+}
+
 function toggleSearch() {
     const modal = document.querySelector('.search-modal');
     const backdrop = document.querySelector('.search-backdrop');
@@ -698,131 +883,7 @@ function handleSearchKeyPress(event) {
     }
 }
 
-// Improved search result rendering
-function runSearch() {
- const query = document.getElementById("searchInput").value.trim().toLowerCase();
- if (!query) return alert("Please enter a name to search.");
- 
- isSearchMode = true;
- currentSearchTerm = query;
- updateJumpLinksVisibility();
- toggleSearch(); // Close the search modal
- 
- const matches = [];
- const foundNames = new Set();
- 
- rotaCache.forEach(entry => {
- if (entry.crew1.toLowerCase().includes(query)) 
- foundNames.add(entry.crew1.trim());
- if (entry.crew2.toLowerCase().includes(query)) 
- foundNames.add(entry.crew2.trim());
- 
- if (entry.crew1.toLowerCase().includes(query) || 
-entry.crew2.toLowerCase().includes(query)) {
- matches.push(entry);
- }
- });
- 
- const uniqueNames = Array.from(foundNames);
- 
- if (!matches.length) {
- document.getElementById("rotaContent").innerHTML = `
- <div class="search-results-header">Search results for "${query}"</div>
- <p class="text-center mt-4">No shifts found for that name.</p>
- `;
- } else if (uniqueNames.length > 1) {
- // Improved mobile-friendly name selection
- const nameList = uniqueNames.map(name => `
- <div class="list-group-item list-group-item-action p-3 mb-2" 
-onclick="safeFilterByExactName('${name.replace(/'/g, "\\'")}')" 
-role="button" tabindex="0">
- <div class="d-flex w-100 justify-content-between align-items-center">
- <h5 class="mb-1">${name}</h5>
- <span class="badge bg-primary rounded-pill">
- ${matches.filter(m => 
-m.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
-m.crew2.trim().toLowerCase() === name.trim().toLowerCase()).length} 
-shifts
- </span>
- </div>
- </div>
- `).join("");
- 
- document.getElementById("rotaContent").innerHTML = `
- <div class="search-results-header">Search results for "${query}"</div>
- <div class="container mt-4">
- <div class="list-group">
- ${nameList}
- </div>
- </div>
- `;
- } else {
- safeFilterByExactName(uniqueNames[0], query);
- }
-}
-
-// Safe name filtering with improved touch handling
-function safeFilterByExactName(name, originalSearch = "") {
- // Prevent any potential touch/swipe interference
- touchStartX = 0;
- touchEndX = 0;
- touchStartTime = 0;
- 
- // Slight delay to ensure clean touch interaction
- setTimeout(() => {
- const results = rotaCache.filter(entry => 
- entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
- entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
- );
- renderGroupedRota(results, true, name);
- }, 100);
-}
-
-// Modify existing touch event handlers to be more robust
-function handleTouchStart(event) {
- // Only track touch start if not on a clickable element
- const target = event.target;
- if (!target.closest('a, button, .list-group-item')) {
- touchStartX = event.touches[0].clientX;
- touchStartTime = Date.now();
- }
-}
-
-function handleTouchEnd() {
- // More strict swipe detection
- const swipeThreshold = 100;
- const swipeDistance = touchEndX - touchStartX;
- const swipeDuration = Date.now() - touchStartTime;
- 
- // Only consider it a swipe if it meets both distance and speed criteria
- if (Math.abs(swipeDistance) > swipeThreshold && swipeDuration < 500) {
- if (swipeDistance > 0) {
- // Swipe right - go to previous day
- navigateDay(-1);
- } else {
- // Swipe left - go to next day
- navigateDay(1);
- }
- }
- 
- // Reset touch tracking
- touchStartX = 0;
- touchEndX = 0;
- touchStartTime = 0;
-}
-
-// Additional prevention of accidental navigation
-document.addEventListener('click', (e) => {
- // Ensure clicks on interactive elements don't trigger unintended actions
- const target = e.target;
- if (target.closest('.list-group-item, a, button')) {
- touchStartX = 0;
- touchEndX = 0;
- touchStartTime = 0;
- }
-}, true);
-
-
+// Utility Functions
 function forceReloadRota() {
     preloadShifts(true);
 }
@@ -837,7 +898,7 @@ function clearRotaCache() {
     }
 }
 
-// --- Auto Refresh --- 
+// Auto Refresh
 function startAutoRefresh() {
     // Clear any existing timers first
     if (autoRefreshTimer) {
@@ -854,95 +915,64 @@ function startAutoRefresh() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             console.log("Page is visible again, refreshing data...");
-preloadShifts(true);
+            preloadShifts(true);
+        }
+    });
 }
-});
-}
-// --- Back to Top Button ---
+
+// Back to Top Button
 function handleScroll() {
-const backToTopBtn = document.querySelector('.back-to-top');
-if (window.scrollY > 200) {
-backToTopBtn.classList.add('visible');
-} else {
-backToTopBtn.classList.remove('visible');
-}
-}
-function scrollToTop() {
-window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-// --- Day Navigation ---
-function navigateDay(direction) {
-const daySelect = document.getElementById('daySelect');
-const currentIndex = daySelect.selectedIndex;
-const newIndex = currentIndex + direction;
-if (newIndex >= 0 && newIndex < availableDays.length) {
-    daySelect.selectedIndex = newIndex;
-    loadRota();
-}
-}
-// --- Swipe Gestures ---
-function handleTouchStart(event) {
-touchStartX = event.touches[0].clientX;
-touchStartTime = Date.now();
-}
-function handleTouchMove(event) {
-touchEndX = event.touches[0].clientX;
-}
-function handleTouchEnd() {
-// Check if we have a swipe gesture
-const swipeThreshold = 100; // Increased from 50 to 100 pixels - requires longer swipe
-const swipeDistance = touchEndX - touchStartX;
-const swipeDuration = Date.now() - touchStartTime;
-// Only consider it a swipe if it meets both distance and speed criteria
-if (Math.abs(swipeDistance) > swipeThreshold && swipeDuration < 500) {
-    // Quick swipe motion - navigate
-    if (swipeDistance > 0) {
-        // Swipe right - go to previous day
-        navigateDay(-1);
+    const backToTopBtn = document.querySelector('.back-to-top');
+    if (window.scrollY > 200) {
+        backToTopBtn.classList.add('visible');
     } else {
-        // Swipe left - go to next day
-        navigateDay(1);
+        backToTopBtn.classList.remove('visible');
     }
 }
 
-// Reset values
-touchStartX = 0;
-touchEndX = 0;
-touchStartTime = 0;
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-// --- Initialization ---
-window.onload = async () => {
-// Get event from URL and set up page
-currentEvent = getEventFromURL();
-updatePageHeader(currentEvent);
-// Set current year in copyright
-setCurrentYear();
 
-// Load shifts
-await preloadShifts();
-
-// Start auto-refresh
-startAutoRefresh();
-
-// Set up scroll event listener for back to top button
-window.addEventListener('scroll', handleScroll);
-
-// Set up swipe gesture handlers with passive: true to improve scrolling performance
-const rotaContent = document.getElementById('rotaContent');
-rotaContent.addEventListener('touchstart', handleTouchStart, { passive: true });
-rotaContent.addEventListener('touchmove', handleTouchMove, { passive: true });
-rotaContent.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-// Prevent swipe detection on clickable elements
-document.addEventListener('click', (e) => {
-    // If clicking on a link or button, reset swipe tracking
-    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON' || e.target.closest('a') || e.target.closest('button')) {
-        touchStartX = 0;
-        touchEndX = 0;
-        touchStartTime = 0;
+// Day Navigation
+function navigateDay(direction) {
+    const daySelect = document.getElementById('daySelect');
+    const currentIndex = daySelect.selectedIndex;
+    const newIndex = currentIndex + direction;
+    if (newIndex >= 0 && newIndex < availableDays.length) {
+        daySelect.selectedIndex = newIndex;
+        loadRota();
     }
-}, true);
+}
+
+// Initialization
+const originalOnload = window.onload;
+window.onload = async function() {
+    // Run original onload if it exists
+    if (originalOnload) originalOnload();
+    
+    // Get event from URL and set up page
+    currentEvent = getEventFromURL();
+    updatePageHeader(currentEvent);
+    
+    // Set current year in copyright
+    setCurrentYear();
+    
+    // Load shifts
+    await preloadShifts();
+    
+    // Start auto-refresh
+    startAutoRefresh();
+    
+    // Set up scroll event listener for back to top button
+    window.addEventListener('scroll', handleScroll);
+    
+    // Setup touch and search handlers
+    setupTouchHandlers();
+    setupSearchHandlers();
 };
+
 </script>
+
 </body>
 </html>
