@@ -572,7 +572,7 @@ function runSearch() {
     
     if (!matches.length) {
         document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
+        <div class="search-results-header">Search results for<br> ${query}</div>
         <p class="text-center mt-4">No shifts found for that name.</p>
         `;
     } else if (uniqueNames.length > 1) {
@@ -594,7 +594,7 @@ function runSearch() {
         `).join("");
         
         document.getElementById("rotaContent").innerHTML = `
-        <div class="search-results-header">Search results for "${query}"</div>
+        <div class="search-results-header">Search results for<br> ${query}</div>
         <div class="container mt-4">
             <div class="list-group">
                 ${nameList}
@@ -816,7 +816,7 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "") {
         
         // Add search results header
         if (searchTerm) {
-            html += `<div class="search-results-header">Search results for<br> "${searchTerm}"</div>`;
+            html += `<div class="search-results-header">Search results for<br> ${searchTerm}</div>`;
         }
         
         const groupedByDay = {};
