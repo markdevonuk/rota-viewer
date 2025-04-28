@@ -206,7 +206,9 @@ html {
     max-width: 200px;
   }
 }
-
+#sectionFilter {
+  max-width: 200px;
+}
  
 </style>
 </head>
@@ -235,20 +237,17 @@ html {
  </div>
  
 <!-- Section Filter -->
-<div class="section-filter mb-4">
-  <div class="day-navigation">
-    <label for="sectionFilter" class="me-2">Filter:</label>
-    <select id="sectionFilter" class="form-select" onchange="applySectionFilter()">
-      <option value="all">All Sections</option>
-      <option value="Leadership">Leadership</option>
-      <option value="Vehicles">Vehicles</option>
-      <option value="Responders">Responders</option>
-      <option value="Static Medical Points">Static Medical Points</option>
-      <option value="Stage Medical">Stage Medical</option>
-      <option value="Medcomms Team">Medcomms Team</option>
-      <option value="Make Ready Team">Make Ready Team</option>
-    </select>
-  </div>
+<div class="section-filter mb-4 text-center">
+  <select id="sectionFilter" class="form-select mx-auto" onchange="applySectionFilter()">
+    <option value="all">All Sections</option>
+    <option value="Leadership">Leadership</option>
+    <option value="Vehicles">Vehicles</option>
+    <option value="Responders">Responders</option>
+    <option value="Static Medical Points">Static Medical Points</option>
+    <option value="Stage Medical">Stage Medical</option>
+    <option value="Medcomms Team">Medcomms Team</option>
+    <option value="Make Ready Team">Make Ready Team</option>
+  </select>
 </div>
  
  <!-- Jump Links (shown conditionally) -->
