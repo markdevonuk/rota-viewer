@@ -303,7 +303,7 @@ function formatEventName(eventCode) {
 function updatePageHeader(eventName) {
     const formattedName = formatEventName(eventName);
     document.title = `${formattedName}`;
-    document.getElementById('pageTitle').textContent = `${formattedName} Rota`;
+    document.getElementById('pageTitle').textContent = `${formattedName}`;
     
     // Additional fix for mobile browsers
     const titleElement = document.getElementById('pageTitle');
