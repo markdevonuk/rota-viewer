@@ -442,25 +442,64 @@ function updateJumpLinksVisibility() {
     shiftLinks.style.display = isSearchMode ? "none" : "block";
 }
 
-// Touch Interaction Handlers
 function setupTouchHandlers() {
     const rotaContent = document.getElementById('rotaContent');
     
-    // Prevent default touch behaviors
-    rotaContent.addEventListener('touchstart', (event) => {
-        // Allow interaction with specific elements
-        if (event.target.closest('.search-name-item, a, button')) {
-            return;
-        }
-        event.preventDefault();
-    }, { passive: false });
+    // Tracking variables for touch interactions
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let isScrolling = false;
     
-    // Prevent scroll on interactive elements
+    rotaContent.addEventListener('touchstart', (event) => {
+        // Record initial touch coordinates
+        touchStartX = event.touches[0].clientX;
+        touchStartY = event.touches[0].clientY;
+        isScrolling = false;
+    }, { passive: true });
+    
     rotaContent.addEventListener('touchmove', (event) => {
-        if (event.target.closest('.search-name-item, a, button')) {
+        // Determine if this is a scroll or potential swipe
+        touchEndX = event.touches[0].clientX;
+        touchEndY = event.touches[0].clientY;
+        
+        const deltaX = Math.abs(touchEndX - touchStartX);
+        const deltaY = Math.abs(touchEndY - touchStartY);
+        
+        // If vertical movement is significant, it's a scroll
+        if (deltaY > deltaX && deltaY > 10) {
+            isScrolling = true;
+        }
+        
+        // If it's a near-horizontal movement and not scrolling, prevent default
+        if (!isScrolling && deltaX > deltaY && deltaX > 50) {
             event.preventDefault();
         }
     }, { passive: false });
+    
+    rotaContent.addEventListener('touchend', (event) => {
+        // Check for swipe if not scrolling
+        if (!isScrolling) {
+            const deltaX = touchEndX - touchStartX;
+            
+            // Swipe detection
+            if (Math.abs(deltaX) > 100) {
+                if (deltaX > 0) {
+                    navigateDay(-1); // Swipe right, go to previous day
+                } else {
+                    navigateDay(1);  // Swipe left, go to next day
+                }
+            }
+        }
+        
+        // Reset tracking
+        touchStartX = 0;
+        touchStartY = 0;
+        touchEndX = 0;
+        touchEndY = 0;
+        isScrolling = false;
+    }, { passive: true });
 }
 
 // Search Function
