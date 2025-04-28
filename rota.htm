@@ -197,6 +197,17 @@ html {
  touch-action: pan-y;
  user-select: none;
 }
+#sectionFilter {
+  max-width: 200px;
+}
+
+@media (max-width: 768px) {
+  #sectionFilter {
+    max-width: 200px;
+  }
+}
+
+ 
 </style>
 </head>
 <body>
@@ -223,22 +234,22 @@ html {
    </button>
  </div>
  
- <!-- Section Filter -->
- <div class="section-filter mb-4">
-   <div class="d-flex align-items-center">
-     <label for="sectionFilter" class="me-2"></label>
-     <select id="sectionFilter" class="form-select" onchange="applySectionFilter()">
-       <option value="all">All Sections</option>
-       <option value="Leadership">Leadership</option>
-       <option value="Vehicles">Vehicles</option>
-       <option value="Responders">Responders</option>
-       <option value="Static Medical Points">Static Medical Points</option>
-       <option value="Stage Medical">Stage Medical</option>
-       <option value="Medcomms Team">Medcomms Team</option>
-       <option value="Make Ready Team">Make Ready Team</option>
-     </select>
-   </div>
- </div>
+<!-- Section Filter -->
+<div class="section-filter mb-4">
+  <div class="day-navigation">
+    <label for="sectionFilter" class="me-2">Filter:</label>
+    <select id="sectionFilter" class="form-select" onchange="applySectionFilter()">
+      <option value="all">All Sections</option>
+      <option value="Leadership">Leadership</option>
+      <option value="Vehicles">Vehicles</option>
+      <option value="Responders">Responders</option>
+      <option value="Static Medical Points">Static Medical Points</option>
+      <option value="Stage Medical">Stage Medical</option>
+      <option value="Medcomms Team">Medcomms Team</option>
+      <option value="Make Ready Team">Make Ready Team</option>
+    </select>
+  </div>
+</div>
  
  <!-- Jump Links (shown conditionally) -->
  <div id="shiftLinks" class="shift-links text-center">
