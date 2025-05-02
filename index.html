@@ -339,6 +339,7 @@ html {
 </div>
  
 <script>
+
 // Sign in logic
 let isAuthenticated = false;
 
@@ -358,8 +359,6 @@ function verifyPassword() {
     document.getElementById('password-error').textContent = 'Incorrect password. Please try again.';
   }
 }
-
-
  
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
@@ -842,7 +841,6 @@ async function preloadShifts(force = false) {
  } catch (err) {
    console.error("Error loading rota data:", err);
    updateStatus("Error: " + err.message);
-   document.getElementById("rotaContent").innerHTML
    document.getElementById("rotaContent").innerHTML = `
      <div class="alert alert-danger">
        <h4>Error Loading Data</h4>
@@ -1097,7 +1095,7 @@ window.onload = function() {
   }
 };
 
- // Create a new function that contains your original onload logic
+// Create a new function that contains your original onload logic
 async function initializeApp() {
   // Get event from URL and set up page
   currentEvent = getEventFromURL();
@@ -1132,38 +1130,6 @@ async function initializeApp() {
   }, true);
 }
  
- // Get event from URL and set up page
- currentEvent = getEventFromURL();
- updatePageHeader(currentEvent);
- 
- // Set current year in copyright
- setCurrentYear();
- 
- // Load shifts
- await preloadShifts();
- 
- // Start auto-refresh
- startAutoRefresh();
- 
- // Set up scroll event listener for back to top button
- window.addEventListener('scroll', handleScroll);
- 
- // Setup touch and search handlers
- setupTouchHandlers();
- 
- // Attach global click handler for name selection
- document.addEventListener('click', function(event) {
-   const nameItem = event.target.closest('.search-name-item');
-   if (nameItem) {
-     event.preventDefault();
-     event.stopPropagation();
-     
-     const name = nameItem.getAttribute('data-name') || 
-       nameItem.textContent.trim().split('\n')[0];
-     handleNameSelection(name);
-   }
- }, true);
-};
 </script>
 </body>
 </html>
