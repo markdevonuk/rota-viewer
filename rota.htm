@@ -1190,7 +1190,7 @@ window.onload = function() {
   }
 };
 
-// Create a new function that contains your original onload logic
+// Create a new function that contains the complete initialization logic
 async function initializeApp() {
   // Get event from URL and set up page
   currentEvent = getEventFromURL();
@@ -1198,6 +1198,18 @@ async function initializeApp() {
   
   // Set current year in copyright
   setCurrentYear();
+  
+  // Register Service Worker for PWA functionality
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      console.log('ServiceWorker registration successful with scope:', registration.scope);
+    } catch (error) {
+      console.error('ServiceWorker registration failed:', error);
+    }
+  } else {
+    console.log('Service workers are not supported in this browser');
+  }
   
   // Load shifts
   await preloadShifts();
@@ -1211,6 +1223,14 @@ async function initializeApp() {
   // Setup touch and search handlers
   setupTouchHandlers();
   
+  // Debug message for install button
+  console.log('Install button status:', document.getElementById('install-button').style.display);
+  
+  // Explicitly check if beforeinstallprompt was missed (debugging)
+  window.addEventListener('appinstalled', (evt) => {
+    console.log('App was installed');
+  });
+  
   // Attach global click handler for name selection
   document.addEventListener('click', function(event) {
     const nameItem = event.target.closest('.search-name-item');
@@ -1223,6 +1243,9 @@ async function initializeApp() {
       handleNameSelection(name);
     }
   }, true);
+  
+  // Initial online status check
+  updateOnlineStatus();
 }
  
 </script>
