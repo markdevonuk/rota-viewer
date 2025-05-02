@@ -6,7 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-<style>
+<link rel="manifest" href="manifest.json">
+ <!-- PWA meta tags -->
+<meta name="theme-color" content="#0d6efd">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Event Rota">
+<link rel="apple-touch-icon" href="icons/icon-152x152.png">
+ <style>
 body { padding: 1rem; background-color: #f9f9f9; }
 h2 { 
  font-size: 1.8rem; 
@@ -237,6 +244,18 @@ html {
   height: 80px;
   margin-bottom: 1rem;
 }
+
+  .offline-indicator {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 8px;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+}
 </style>
 </head>
 <body>
@@ -254,6 +273,10 @@ html {
 
 <div id="main-content" style="display: none;">
 <div class="container">
+ <!-- Add this somewhere near the top of your page -->
+<div id="offline-indicator" class="offline-indicator" style="display: none;">
+  You are offline. Some features may be limited.
+</div>
  <!-- Header Row with Logo, Title and Search Icon -->
  <div class="d-flex justify-content-between align-items-center mb-3">
    <div class="d-flex align-items-center">
@@ -296,6 +319,13 @@ html {
    <a href="#late" class="mx-2">Late</a> |
    <a href="#night" class="ms-2">Night</a>
  </div>
+
+ <div>
+<button id="install-button" class="btn btn-outline-primary" style="display: none;">
+  Install App
+</button>
+ </div>
+
  
  <div id="rotaContent" class="swipe-container">
    <div class="initial-loading">
@@ -359,6 +389,51 @@ function verifyPassword() {
     document.getElementById('password-error').textContent = 'Incorrect password. Please try again.';
   }
 }
+
+ // Monitor online/offline status
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+function updateOnlineStatus() {
+  const offlineIndicator = document.getElementById('offline-indicator');
+  if (navigator.onLine) {
+    offlineIndicator.style.display = 'none';
+  } else {
+    offlineIndicator.style.display = 'block';
+  }
+}
+
+ let deferredPrompt;
+
+// Check if the app can be installed
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent Chrome 67 and earlier from automatically showing the prompt
+  e.preventDefault();
+  // Stash the event so it can be triggered later
+  deferredPrompt = e;
+  // Show the install button
+  const installButton = document.getElementById('install-button');
+  installButton.style.display = 'inline-block';
+  
+  installButton.addEventListener('click', () => {
+    // Hide the install button
+    installButton.style.display = 'none';
+    // Show the prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+      deferredPrompt = null;
+    });
+  });
+});
+
+// Initial check
+updateOnlineStatus();
  
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
@@ -768,6 +843,32 @@ function handleSearchKeyPress(event) {
 
 // Remaining Functions
 async function preloadShifts(force = false) {
+
+   try {
+    updateStatus("Loading fresh data...");
+    
+    // Try to fetch from the API
+    let response, rawData;
+    try {
+      response = await fetch(`${API_URL}?action=loadAllShifts&event=${currentEvent}`);
+      rawData = await response.json();
+      
+      // If successful, store the API response in cache
+      const rotaCacheKey = `api_response_${currentEvent}`;
+      localStorage.setItem(rotaCacheKey, JSON.stringify(rawData));
+    } catch (networkErr) {
+      console.log("Network error, trying cached API response", networkErr);
+      
+      // If network error, try to use cached API response
+      const rotaCacheKey = `api_response_${currentEvent}`;
+      const cachedResponse = localStorage.getItem(rotaCacheKey);
+      if (cachedResponse) {
+        rawData = JSON.parse(cachedResponse);
+        updateStatus("Using cached data (offline mode)");
+      } else {
+        throw new Error("No internet connection and no cached data available");
+      }
+    }
  // Show loading state
  document.getElementById("rotaContent").innerHTML = `
    <div class="initial-loading">
