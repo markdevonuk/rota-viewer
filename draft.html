@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
+
+ 
 <head>
 <meta charset="UTF-8">
 <title>Event Rota Viewer</title>
@@ -65,7 +68,12 @@ h2#pageTitle,
 .header-row { align-items: center; margin-bottom: 1rem; }
 .shift-links { margin: 1rem 0; }
 .search-icon { cursor: pointer; font-size: 1.5rem; }
-.search-modal {
+.my-shifts-icon { 
+  cursor: pointer; 
+  font-size: 1.5rem; 
+  margin-right: 15px; 
+}
+.search-modal, .name-modal {
  position: fixed;
  top: 20px;
  right: 20px;
@@ -77,10 +85,10 @@ h2#pageTitle,
  display: none;
  z-index: 1000;
 }
-.search-modal.active {
+.search-modal.active, .name-modal.active {
  display: block;
 }
-.search-backdrop {
+.search-backdrop, .modal-backdrop {
  position: fixed;
  top: 0;
  left: 0;
@@ -90,7 +98,7 @@ h2#pageTitle,
  display: none;
  z-index: 999;
 }
-.search-backdrop.active {
+.search-backdrop.active, .modal-backdrop.active {
  display: block;
 }
 .search-results-header {
@@ -101,10 +109,10 @@ h2#pageTitle,
  font-size: 1.2rem;
  font-weight: bold;
 }
-.search-modal {
+.search-modal, .name-modal, .welcome-modal {
  z-index: 2000; /* raised */
 }
-.search-backdrop {
+.search-backdrop, .modal-backdrop {
  z-index: 999; /* stays lower */
 }
 .initial-loading {
@@ -172,24 +180,100 @@ html {
 .section-filter {
  margin-top: 1rem;
 }
+/* Welcome modal and name input styles */
+.welcome-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 350px;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  display: none;
+  z-index: 2000;
+  text-align: center;
+}
+.welcome-modal.active {
+  display: block;
+}
+.welcome-modal h4 {
+  margin-bottom: 1rem;
+}
+.welcome-modal p {
+  margin-bottom: 1.5rem;
+}
+.welcome-modal .btn-group {
+  display: flex;
+  justify-content: space-between;
+}
+.name-input-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 350px;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  display: none;
+  z-index: 2001;
+}
+.name-input-modal.active {
+  display: block;
+}
+.welcome-back-alert {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 300px;
+  z-index: 2000;
+  display: none;
+}
+.welcome-back-alert.active {
+  display: block;
+  animation: fadeInOut 5s forwards;
+}
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.login-container {
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
 /* Mobile-specific override */
 @media (max-width: 768px) {
  .day-navigation {
- display: flex;
- flex-direction: row;
- width: 100%;
- justify-content: center;
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   justify-content: center;
  }
  #daySelect {
- max-width: 200px;
+   max-width: 200px;
  }
  /* Ensure title styling is consistent on mobile */
  h2, h2#pageTitle, #pageTitle, .h2 {
- text-transform: none !important;
- -webkit-text-transform: none !important;
- letter-spacing: normal !important;
- font-variant: normal !important;
- text-decoration: none !important;
+   text-transform: none !important;
+   -webkit-text-transform: none !important;
+   letter-spacing: normal !important;
+   font-variant: normal !important;
+   text-decoration: none !important;
+ }
+ .welcome-modal, .name-input-modal {
+   width: 90%;
+   max-width: 350px;
  }
 }
 /* Touch and swipe styles */
@@ -209,84 +293,42 @@ html {
 #sectionFilter {
   max-width: 200px;
 }
-
-/* My Shifts Feature Styles */
-.my-shifts-btn {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 10px;
-  transition: background-color 0.3s;
-}
-
-.my-shifts-btn:hover {
-  background-color: #5a6268;
-}
-
-.my-shifts-btn.active {
-  background-color: #28a745;
-}
-
-.my-shifts-header {
-  background-color: #e9f7ef;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.name-selection-item {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.name-selection-item:hover {
-  background-color: #f8f9fa;
-}
-
-#nextShiftToast {
-  width: 350px;
-}
-
-#nextShiftToast .toast-body {
-  padding: 1rem;
-}
-
-.next-shift-card {
-  border-left: 4px solid #ffc107;
-  background-color: #fff9e6;
-  padding: 0.5rem;
-  border-radius: 4px;
-}
-
-.reminder-heading {
-  font-weight: bold;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
+ 
 </style>
 </head>
-<body>
-<div class="container">
+
+
+
+ <body>
+<!-- Login Screen (initially shown) -->
+<div id="loginScreen" class="container">
+  <div class="login-container">
+    <div class="text-center mb-4">
+      <img src="FMS.png" alt="FMS Logo" class="header-logo mb-3">
+      <h3>Event Rota Login</h3>
+    </div>
+    <div class="mb-3">
+      <label for="passwordInput" class="form-label">Enter Password</label>
+      <input type="password" class="form-control" id="passwordInput" placeholder="Password">
+    </div>
+    <div id="loginError" class="alert alert-danger d-none">
+      Incorrect password. Please try again.
+    </div>
+    <button class="btn btn-primary w-100" onclick="checkPassword()">Login</button>
+  </div>
+</div>
+
+<!-- Main Application (hidden until login successful) -->
+<div id="mainApp" class="container d-none">
  <!-- Header Row with Logo, Title, My Shifts and Search Icon -->
  <div class="d-flex justify-content-between align-items-center mb-3">
    <div class="d-flex align-items-center">
      <img src="FMS.png" alt="FMS Logo" class="header-logo me-3">
      <h2 id="pageTitle">Event Rota</h2>
    </div>
-   <div class="d-flex align-items-center">
-     <button id="myShiftsBtn" class="my-shifts-btn me-2" onclick="showMyShifts()" title="My Shifts">
-       <i class="bi bi-person"></i>
-     </button>
-     <i class="bi bi-search search-icon" onclick="toggleSearch()"></i>
+   <div>
+     <i class="bi bi-person-badge my-shifts-icon" title="My Shifts" onclick="showMyShifts()"></i>
+     <i class="bi bi-search search-icon" title="Search" onclick="toggleSearch()"></i>
    </div>
  </div>
  
@@ -345,10 +387,12 @@ html {
    © <span id="currentYear"></span> Mark Walker. All rights reserved.
  </div>
 </div>
+
 <!-- Back to Top Button -->
 <div class="back-to-top" onclick="scrollToTop()" title="Back to top">
  <i class="bi bi-arrow-up"></i>
 </div>
+
 <!-- Search Modal -->
 <div class="search-backdrop" onclick="toggleSearch()"></div>
 <div class="search-modal">
@@ -364,97 +408,39 @@ html {
  </div>
 </div>
 
-<!-- Welcome Dialog -->
-<div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="welcomeModalLabel">Welcome to Event Rota</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Would you like to save your name to easily find your shifts?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="dismissWelcome()">Not Now</button>
-        <button type="button" class="btn btn-primary" onclick="showNameInput()">Save My Name</button>
-      </div>
-    </div>
+<!-- Welcome Modal -->
+<div class="modal-backdrop" id="welcomeBackdrop" onclick="closeWelcomeModal()"></div>
+<div class="welcome-modal" id="welcomeModal">
+  <h4>Welcome to Event Rota</h4>
+  <p>Would you like to save your name to easily find your shifts?</p>
+  <div class="d-flex justify-content-between">
+    <button class="btn btn-primary" onclick="openNameInputModal()">Save My Name</button>
+    <button class="btn btn-outline-secondary" onclick="closeWelcomeModal()">Not Now</button>
   </div>
 </div>
 
-<!-- Name Input Dialog -->
-<div class="modal fade" id="nameInputModal" tabindex="-1" aria-labelledby="nameInputModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="nameInputModalLabel">Enter Your Name</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label for="userNameInput" class="form-label">Your Name</label>
-          <input type="text" class="form-control" id="userNameInput" placeholder="Enter your full name as it appears in the rota">
-          <div id="nameInputFeedback" class="form-text text-danger" style="display: none;"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="verifyAndSaveName()">Verify & Save</button>
-      </div>
-    </div>
+<!-- Name Input Modal -->
+<div class="name-input-modal" id="nameInputModal">
+  <h4>Enter Your Name</h4>
+  <p class="small text-muted">Please enter your name exactly as it appears in the rota</p>
+  <div class="mb-3">
+    <input type="text" id="myNameInput" class="form-control" 
+           placeholder="Enter your name..." onkeypress="handleNameInputKeyPress(event)">
+  </div>
+  <div class="d-flex justify-content-between">
+    <button class="btn btn-primary" onclick="saveUserName()">Save</button>
+    <button class="btn btn-outline-secondary" onclick="closeNameInputModal()">Cancel</button>
   </div>
 </div>
 
-<!-- Name Selection Dialog -->
-<div class="modal fade" id="nameSelectionModal" tabindex="-1" aria-labelledby="nameSelectionModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="nameSelectionModalLabel">Multiple Matches Found</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>We found multiple names that match. Please select your name:</p>
-        <div id="nameSelectionList" class="list-group">
-          <!-- Names will be dynamically added here -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </div>
+<!-- Welcome Back Alert -->
+<div id="welcomeBackAlert" class="alert alert-info welcome-back-alert">
+  <div class="d-flex align-items-center justify-content-between">
+    <span id="welcomeBackText">Welcome back, <span id="savedUserName"></span>!</span>
+    <button class="btn btn-sm btn-info ms-2" onclick="showMyShifts()">View My Shifts</button>
   </div>
 </div>
 
-<!-- Welcome Back Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-  <div id="welcomeBackToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="toast-header">
-      <strong class="me-auto">Event Rota</strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div class="toast-body">
-      Welcome back, <span id="welcomeBackName"></span>!
-      <div class="mt-2 pt-2 border-top">
-        <button type="button" class="btn btn-primary btn-sm" onclick="showMyShifts()">View My Shifts</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Next Shift Reminder -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11; bottom: 10px;">
-  <div id="nextShiftToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="toast-header bg-warning text-dark">
-      <strong class="me-auto">Upcoming Shift Reminder</strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div class="toast-body">
-      <div id="nextShiftDetails"></div>
-    </div>
-  </div>
-</div>
 <script>
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
@@ -468,6 +454,171 @@ let touchEndX = 0;
 let touchStartTime = 0;
 let currentEvent = "";
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
+const CORRECT_PASSWORD = "1111"; // Change this to your desired password
+
+// Password Authentication Functions
+function checkPassword() {
+  const enteredPassword = document.getElementById('passwordInput').value;
+  if (enteredPassword === CORRECT_PASSWORD) {
+    // Password correct - show main app and hide login screen
+    document.getElementById('loginScreen').classList.add('d-none');
+    document.getElementById('mainApp').classList.remove('d-none');
+    
+    // Store login state in session storage (clears when browser is closed)
+    sessionStorage.setItem('isLoggedIn', 'true');
+    
+    // Initialize the application
+    initializeApp();
+  } else {
+    // Password incorrect - show error
+    document.getElementById('loginError').classList.remove('d-none');
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('passwordInput').focus();
+  }
+}
+
+// Check if user is already logged in
+function checkLoginStatus() {
+  if (sessionStorage.getItem('isLoggedIn') === 'true') {
+    document.getElementById('loginScreen').classList.add('d-none');
+    document.getElementById('mainApp').classList.remove('d-none');
+    initializeApp();
+  }
+}
+
+// Initialize the application after successful login
+function initializeApp() {
+  // Get event from URL and set up page
+  currentEvent = getEventFromURL();
+  updatePageHeader(currentEvent);
+  
+  // Set current year in copyright
+  setCurrentYear();
+  
+  // Load shifts
+  preloadShifts();
+  
+  // Start auto-refresh
+  startAutoRefresh();
+  
+  // Set up scroll event listener for back to top button
+  window.addEventListener('scroll', handleScroll);
+  
+  // Setup touch and search handlers
+  setupTouchHandlers();
+  
+  // Check if this is the first visit or if user has a saved name
+  checkFirstVisit();
+}
+
+// "My Shifts" Feature Functions
+function checkFirstVisit() {
+  const firstVisitKey = `firstVisit_${currentEvent}`;
+  const userNameKey = `userName_${currentEvent}`;
+  const isFirstVisit = localStorage.getItem(firstVisitKey) !== 'false';
+  const savedUserName = localStorage.getItem(userNameKey);
+  
+  if (isFirstVisit && !savedUserName) {
+    // First visit - show welcome modal
+    showWelcomeModal();
+    localStorage.setItem(firstVisitKey, 'false');
+  } else if (savedUserName) {
+    // Returning user with saved name - show welcome back alert
+    showWelcomeBackAlert(savedUserName);
+  }
+}
+
+function showWelcomeModal() {
+  document.getElementById('welcomeBackdrop').classList.add('active');
+  document.getElementById('welcomeModal').classList.add('active');
+}
+
+function closeWelcomeModal() {
+  document.getElementById('welcomeBackdrop').classList.remove('active');
+  document.getElementById('welcomeModal').classList.remove('active');
+}
+
+function openNameInputModal() {
+  closeWelcomeModal();
+  document.getElementById('nameInputModal').classList.add('active');
+  document.getElementById('myNameInput').focus();
+}
+
+function closeNameInputModal() {
+  document.getElementById('nameInputModal').classList.remove('active');
+}
+
+function handleNameInputKeyPress(event) {
+  if (event.key === 'Enter') {
+    saveUserName();
+  }
+}
+
+function saveUserName() {
+  const nameInput = document.getElementById('myNameInput');
+  const enteredName = nameInput.value.trim();
+  
+  if (!enteredName) {
+    alert('Please enter your name');
+    return;
+  }
+  
+  // Verify the name exists in the rota
+  const nameExists = verifyNameInRota(enteredName);
+  
+  if (nameExists) {
+    // Save the name
+    const userNameKey = `userName_${currentEvent}`;
+    localStorage.setItem(userNameKey, enteredName);
+    closeNameInputModal();
+    showWelcomeBackAlert(enteredName);
+  } else {
+    // Name not found in rota
+    if (confirm('This name was not found in the rota. Would you like to save it anyway?')) {
+      const userNameKey = `userName_${currentEvent}`;
+      localStorage.setItem(userNameKey, enteredName);
+      closeNameInputModal();
+      showWelcomeBackAlert(enteredName);
+    }
+  }
+}
+
+function verifyNameInRota(name) {
+  // If rota data isn't loaded yet, don't block the user
+  if (!rotaCache || rotaCache.length === 0) {
+    return true;
+  }
+  
+  // Check if name exists in rota data
+  return rotaCache.some(entry => 
+    entry.crew1.trim().toLowerCase() === name.trim().toLowerCase() || 
+    entry.crew2.trim().toLowerCase() === name.trim().toLowerCase()
+  );
+}
+
+function showWelcomeBackAlert(name) {
+  document.getElementById('savedUserName').textContent = name;
+  const welcomeBackAlert = document.getElementById('welcomeBackAlert');
+  welcomeBackAlert.classList.add('active');
+  
+  // Hide after animation completes
+  setTimeout(() => {
+    welcomeBackAlert.classList.remove('active');
+  }, 5000);
+}
+
+function showMyShifts() {
+  const userNameKey = `userName_${currentEvent}`;
+  const savedName = localStorage.getItem(userNameKey);
+  
+  if (savedName) {
+    // User has a saved name, show their shifts
+    handleNameSelection(savedName);
+  } else {
+    // No saved name, prompt to set one
+    openNameInputModal();
+  }
+}
 
 // Get event from URL parameter
 function getEventFromURL() {
@@ -612,6 +763,8 @@ function loadCacheFromStorage() {
 function isCacheStale(minutes = 15) {
  // Use event-specific timestamp key
  const timestampKey = `rotaCacheTimestamp_${currentEvent}`;
+ const lastUpdate = parseInt(localStorage.getItem
+timestampKey = `rotaCacheTimestamp_${currentEvent}`;
  const lastUpdate = parseInt(localStorage.getItem(timestampKey) || "0");
  return (Date.now() - lastUpdate) > minutes * 60 * 1000;
 }
@@ -749,7 +902,8 @@ function applySectionFilter() {
    renderGroupedRota(dayData, false, "", filter);
  }
 }
-  // Search Function
+
+// Search Function
 function runSearch() {
  const query = document.getElementById("searchInput").value.trim().toLowerCase();
  if (!query) return alert("Please enter a name to search.");
@@ -831,6 +985,23 @@ function handleNameSelection(name, originalSearch = "") {
      document.getElementById('sectionFilter').value : 'all';
    
    renderGroupedRota(results, true, name, sectionFilter);
+   
+   // Add a "Change Name" button when viewing My Shifts
+   const userNameKey = `userName_${currentEvent}`;
+   const savedName = localStorage.getItem(userNameKey);
+   
+   if (savedName && savedName.trim().toLowerCase() === name.trim().toLowerCase()) {
+     // This is showing My Shifts - add settings button
+     const header = document.querySelector('.search-results-header');
+     if (header) {
+       header.innerHTML = `My Shifts: ${name}
+         <div class="mt-2">
+           <button class="btn btn-sm btn-outline-secondary" onclick="openNameInputModal()">
+             <i class="bi bi-pencil"></i> Change Name
+           </button>
+         </div>`;
+     }
+   }
  }, 50);
 }
 
@@ -936,7 +1107,6 @@ async function preloadShifts(force = false) {
  } catch (err) {
    console.error("Error loading rota data:", err);
    updateStatus("Error: " + err.message);
-   document.getElementById("rotaContent").innerHTML
    document.getElementById("rotaContent").innerHTML = `
      <div class="alert alert-danger">
        <h4>Error Loading Data</h4>
@@ -1042,7 +1212,23 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "", sectionFilte
    
    // Add search results header
    if (searchTerm) {
-     html += `<div class="search-results-header">Search results for<br>"${searchTerm}"</div>`;
+     // Check if this is "My Shifts" view
+     const userNameKey = `userName_${currentEvent}`;
+     const savedName = localStorage.getItem(userNameKey);
+     
+     if (savedName && savedName.trim().toLowerCase() === searchTerm.trim().toLowerCase()) {
+       html += `
+         <div class="search-results-header">
+           My Shifts: ${searchTerm}
+           <div class="mt-2">
+             <button class="btn btn-sm btn-outline-secondary" onclick="openNameInputModal()">
+               <i class="bi bi-pencil"></i> Change Name
+             </button>
+           </div>
+         </div>`;
+     } else {
+       html += `<div class="search-results-header">Search results for<br>"${searchTerm}"</div>`;
+     }
    }
    
    const groupedByDay = {};
@@ -1176,323 +1362,22 @@ function clearRotaCache() {
  }
 }
 
-  // My Shifts Feature
-
-// Keys for localStorage
-function getUserNameKey() {
-  return `userName_${currentEvent}`;
-}
-
-function getWelcomeShownKey() {
-  return `welcomeShown_${currentEvent}`;
-}
-
-// Check if welcome dialog should be shown
-function checkShowWelcome() {
-  const welcomeShown = localStorage.getItem(getWelcomeShownKey());
-  const userName = localStorage.getItem(getUserNameKey());
+// Initialization
+window.onload = function() {
+  // Check login status first
+  checkLoginStatus();
   
-  if (!welcomeShown && !userName) {
-    // Show welcome dialog after a short delay
-    setTimeout(() => {
-      const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
-      welcomeModal.show();
-    }, 1000);
-  } else if (userName) {
-    // User has a saved name, show welcome back toast
-    showWelcomeBackToast(userName);
-    // Check for upcoming shifts
-    checkForUpcomingShift(userName);
-  }
-}
-
-// Dismiss welcome dialog and remember choice
-function dismissWelcome() {
-  localStorage.setItem(getWelcomeShownKey(), 'true');
-}
-
-// Show name input dialog
-function showNameInput() {
-  // Hide welcome dialog
-  const welcomeModal = bootstrap.Modal.getInstance(document.getElementById('welcomeModal'));
-  if (welcomeModal) {
-    welcomeModal.hide();
-  }
-  
-  // Clear any previous input
-  document.getElementById('userNameInput').value = '';
-  document.getElementById('nameInputFeedback').style.display = 'none';
-  
-  // Show name input dialog
-  setTimeout(() => {
-    const nameInputModal = new bootstrap.Modal(document.getElementById('nameInputModal'));
-    nameInputModal.show();
-    document.getElementById('userNameInput').focus();
-  }, 500);
-}
-
-// Verify and save user name
-function verifyAndSaveName() {
-  const nameInput = document.getElementById('userNameInput').value.trim();
-  const feedback = document.getElementById('nameInputFeedback');
-  
-  if (!nameInput) {
-    feedback.textContent = 'Please enter your name.';
-    feedback.style.display = 'block';
-    return;
-  }
-  
-  // Check if name exists in rota
-  const matches = findNameMatches(nameInput);
-  
-  if (matches.length === 0) {
-    feedback.textContent = 'No matches found for this name in the rota.';
-    feedback.style.display = 'block';
-    return;
-  } else if (matches.length === 1) {
-    // Single match found, save it
-    saveUserName(matches[0]);
-    
-    // Close the modal
-    const nameInputModal = bootstrap.Modal.getInstance(document.getElementById('nameInputModal'));
-    nameInputModal.hide();
-    
-    // Show confirmation
-    showWelcomeBackToast(matches[0]);
-    
-    // Check for upcoming shifts
-    checkForUpcomingShift(matches[0]);
-  } else {
-    // Multiple matches found, show selection dialog
-    showNameSelectionDialog(matches);
-  }
-}
-
-// Find name matches in the rota data
-function findNameMatches(nameQuery) {
-  const query = nameQuery.toLowerCase();
-  const matches = new Set();
-  
-  rotaCache.forEach(entry => {
-    if (entry.crew1.toLowerCase().includes(query)) matches.add(entry.crew1.trim());
-    if (entry.crew2.toLowerCase().includes(query)) matches.add(entry.crew2.trim());
+  // Set event listeners for password input field
+  const passwordInput = document.getElementById('passwordInput');
+  passwordInput.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+      checkPassword();
+    }
   });
   
-  return Array.from(matches);
-}
-
-// Show name selection dialog for multiple matches
-function showNameSelectionDialog(matches) {
-  // Hide name input dialog
-  const nameInputModal = bootstrap.Modal.getInstance(document.getElementById('nameInputModal'));
-  if (nameInputModal) {
-    nameInputModal.hide();
-  }
-  
-  // Populate selection list
-  const selectionList = document.getElementById('nameSelectionList');
-  selectionList.innerHTML = matches.map(name => `
-    <button type="button" class="list-group-item list-group-item-action name-selection-item" 
-      onclick="selectUserName('${name.replace(/'/g, "\\'")}')">
-      ${name}
-    </button>
-  `).join('');
-  
-  // Show selection dialog
-  setTimeout(() => {
-    const nameSelectionModal = new bootstrap.Modal(document.getElementById('nameSelectionModal'));
-    nameSelectionModal.show();
-  }, 500);
-}
-
-// Handle name selection
-function selectUserName(name) {
-  // Save selected name
-  saveUserName(name);
-  
-  // Close the modal
-  const nameSelectionModal = bootstrap.Modal.getInstance(document.getElementById('nameSelectionModal'));
-  if (nameSelectionModal) {
-    nameSelectionModal.hide();
-  }
-  
-  // Show confirmation
-  showWelcomeBackToast(name);
-  
-  // Check for upcoming shifts
-  checkForUpcomingShift(name);
-}
-
-// Save user name to localStorage
-function saveUserName(name) {
-  localStorage.setItem(getUserNameKey(), name);
-  localStorage.setItem(getWelcomeShownKey(), 'true');
-  
-  // Update My Shifts button appearance
-  updateMyShiftsButton();
-}
-
-// Show welcome back toast
-function showWelcomeBackToast(name) {
-  document.getElementById('welcomeBackName').textContent = name.split(' ')[0]; // First name only
-  const toast = new bootstrap.Toast(document.getElementById('welcomeBackToast'));
-  toast.show();
-}
-
-// Show My Shifts
-function showMyShifts() {
-  const userName = localStorage.getItem(getUserNameKey());
-  
-  if (!userName) {
-    // No saved name, show name input
-    showNameInput();
-    return;
-  }
-  
-  // Use existing search functionality
-  isSearchMode = true;
-  currentSearchTerm = userName;
-  updateJumpLinksVisibility();
-  
-  const results = rotaCache.filter(entry => 
-    entry.crew1.trim().toLowerCase() === userName.trim().toLowerCase() || 
-    entry.crew2.trim().toLowerCase() === userName.trim().toLowerCase()
-  );
-  
-  if (results.length === 0) {
-    document.getElementById("rotaContent").innerHTML = `
-      <div class="my-shifts-header">
-        <div>
-          <h4>My Shifts: ${userName}</h4>
-          <p>No shifts assigned</p>
-        </div>
-        <button class="btn btn-outline-secondary btn-sm" onclick="changeUserName()">
-          <i class="bi bi-pencil"></i> Change Name
-        </button>
-      </div>
-    `;
-  } else {
-    // Add header before rendering shifts
-    document.getElementById("rotaContent").innerHTML = `
-      <div class="my-shifts-header">
-        <div>
-          <h4>My Shifts: ${userName}</h4>
-          <p>${results.length} shift${results.length !== 1 ? 's' : ''} found</p>
-        </div>
-        <button class="btn btn-outline-secondary btn-sm" onclick="changeUserName()">
-          <i class="bi bi-pencil"></i> Change Name
-        </button>
-      </div>
-    `;
-    
-    // Get the current filter if there is one
-    const sectionFilter = document.getElementById('sectionFilter') ? 
-      document.getElementById('sectionFilter').value : 'all';
-    
-    renderGroupedRota(results, true, userName, sectionFilter);
-  }
-}
-
-// Change saved user name
-function changeUserName() {
-  showNameInput();
-}
-
-// Update My Shifts button appearance
-function updateMyShiftsButton() {
-  const myShiftsBtn = document.getElementById('myShiftsBtn');
-  const userName = localStorage.getItem(getUserNameKey());
-  
-  if (userName) {
-    myShiftsBtn.classList.add('active');
-    myShiftsBtn.title = `My Shifts (${userName})`;
-  } else {
-    myShiftsBtn.classList.remove('active');
-    myShiftsBtn.title = 'My Shifts';
-  }
-}
-
-// Check for upcoming shift and show reminder
-function checkForUpcomingShift(userName) {
-  if (!rotaCache || rotaCache.length === 0 || !userName) return;
-  
-  const userShifts = rotaCache.filter(entry => 
-    entry.crew1.trim().toLowerCase() === userName.trim().toLowerCase() || 
-    entry.crew2.trim().toLowerCase() === userName.trim().toLowerCase()
-  );
-  
-  if (userShifts.length === 0) return;
-  
-  // Get current day
-  const daySelect = document.getElementById("daySelect");
-  const currentDay = daySelect.value;
-  
-  // Filter shifts for current day
-  const todayShifts = userShifts.filter(shift => 
-    shift.day.toLowerCase() === currentDay.toLowerCase()
-  );
-  
-  if (todayShifts.length > 0) {
-    // Show next shift reminder
-    const nextShift = todayShifts[0]; // Just show the first one
-    
-    document.getElementById('nextShiftDetails').innerHTML = `
-      <div class="next-shift-card">
-        <div class="reminder-heading">You have a shift today</div>
-        <div><strong>Role:</strong> ${nextShift.role}</div>
-        <div><strong>Time:</strong> ${nextShift.time}</div>
-        <div><strong>Day:</strong> ${nextShift.day}</div>
-      </div>
-    `;
-    
-    const toast = new bootstrap.Toast(document.getElementById('nextShiftToast'), {
-      autohide: false
-    });
-    toast.show();
-  }
-}
-
-// Initialization
-window.onload = async function() {
-  // Get event from URL and set up page
-  currentEvent = getEventFromURL();
-  updatePageHeader(currentEvent);
-  
-  // Set current year in copyright
-  setCurrentYear();
-  
-  // Load shifts
-  await preloadShifts();
-  
-  // Start auto-refresh
-  startAutoRefresh();
-  
-  // Set up scroll event listener for back to top button
-  window.addEventListener('scroll', handleScroll);
-  
-  // Setup touch and search handlers
-  setupTouchHandlers();
-  
-  // Attach global click handler for name selection
-  document.addEventListener('click', function(event) {
-    const nameItem = event.target.closest('.search-name-item');
-    if (nameItem) {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      const name = nameItem.getAttribute('data-name') || 
-        nameItem.textContent.trim().split('\n')[0];
-      handleNameSelection(name);
-    }
-  }, true);
-  
-  // Update My Shifts button appearance
-  updateMyShiftsButton();
-  
-  // Check if welcome dialog should be shown
-  checkShowWelcome();
+  // Focus password field on load
+  passwordInput.focus();
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
