@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 <title>Event Rota Viewer </title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -259,12 +258,7 @@ html {
 }
 </style>
 </head>
-  <!-- Place this right after the header section, before other content -->
-<div class="text-center my-3">
-  <button id="install-button" class="btn btn-primary" style="display: none;">
-    Install App <i class="bi bi-download ms-1"></i>
-  </button>
-</div>
+
 <body>
  <!-- Password Modal -->
 <div id="password-modal" class="password-modal">
@@ -277,7 +271,10 @@ html {
     <button class="btn btn-primary mt-2" onclick="verifyPassword()">Submit</button>
   </div>
 </div>
-
+<!-- Add this somewhere near the top of your page -->
+  <div id="offline-indicator" class="offline-indicator" style="display: none;">
+    You are offline. Some features may be limited.
+  </div>
 <div id="main-content" style="display: none;">
 <div class="container">
  <!-- Header Row with Logo, Title and Search Icon -->
@@ -324,10 +321,6 @@ html {
  </div>
 
  <div>
-<button id="install-button" class="btn btn-outline-primary" style="display: none;">
-  Install App
-</button>
- </div>
 
  
  <div id="rotaContent" class="swipe-container">
@@ -368,6 +361,11 @@ html {
      <i class="bi bi-search"></i>
    </button>
  </div>
+ <div class="text-center my-3">
+        <button id="install-button" class="btn btn-primary" style="display: none;">
+          Install App <i class="bi bi-download ms-1"></i>
+        </button>
+      </div>
 </div>
 </div>
  
