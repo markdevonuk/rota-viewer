@@ -213,6 +213,19 @@ html {
 </style>
 </head>
 <body>
+ <!-- Password Modal -->
+<div id="password-modal" class="password-modal">
+  <div class="password-container">
+    <img src="fms-logo.png" alt="FMS Logo" class="password-logo">
+    <h2>Event Rota Access</h2>
+    <p>Please enter the password to view the rota:</p>
+    <input type="password" id="password-input" class="form-control">
+    <p id="password-error" class="text-danger"></p>
+    <button class="btn btn-primary mt-2" onclick="verifyPassword()">Submit</button>
+  </div>
+</div>
+
+<div id="main-content" style="display: none;">
 <div class="container">
  <!-- Header Row with Logo, Title and Search Icon -->
  <div class="d-flex justify-content-between align-items-center mb-3">
@@ -296,7 +309,31 @@ html {
    </button>
  </div>
 </div>
+</div>
+ 
 <script>
+// Sign in logic
+let isAuthenticated = false;
+
+// Add this function to handle password verification
+function verifyPassword() {
+  const password = document.getElementById('password-input').value;
+  const correctPassword = "FMS2025"; // Change this to your desired password
+  
+  if (password === correctPassword) {
+    isAuthenticated = true;
+    localStorage.setItem('fmsRotaAuth', 'true');
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    // Initialize the app
+    initializeApp();
+  } else {
+    document.getElementById('password-error').textContent = 'Incorrect password. Please try again.';
+  }
+}
+
+
+ 
 // Config
 const API_URL = "https://script.google.com/macros/s/AKfycbxUX2Atntw4DthlFARM0IxSOlo1ETMQhZep2ag88IxA5Xcf6Q6hV1HqCBD278s-0phOsQ/exec";
 let rotaCache = [];
@@ -1020,9 +1057,53 @@ function clearRotaCache() {
 
 // Initialization
 const originalOnload = window.onload;
-window.onload = async function() {
- // Run original onload if it exists
- if (originalOnload) originalOnload();
+window.onload = function() {
+  // Check if already authenticated
+  if (localStorage.getItem('fmsRotaAuth') === 'true') {
+    isAuthenticated = true;
+    document.getElementById('password-modal').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+    initializeApp();
+  } else {
+    document.getElementById('password-modal').style.display = 'flex';
+    document.getElementById('main-content').style.display = 'none';
+  }
+};
+
+ // Create a new function that contains your original onload logic
+async function initializeApp() {
+  // Get event from URL and set up page
+  currentEvent = getEventFromURL();
+  updatePageHeader(currentEvent);
+  
+  // Set current year in copyright
+  setCurrentYear();
+  
+  // Load shifts
+  await preloadShifts();
+  
+  // Start auto-refresh
+  startAutoRefresh();
+  
+  // Set up scroll event listener for back to top button
+  window.addEventListener('scroll', handleScroll);
+  
+  // Setup touch and search handlers
+  setupTouchHandlers();
+  
+  // Attach global click handler for name selection
+  document.addEventListener('click', function(event) {
+    const nameItem = event.target.closest('.search-name-item');
+    if (nameItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const name = nameItem.getAttribute('data-name') || 
+        nameItem.textContent.trim().split('\n')[0];
+      handleNameSelection(name);
+    }
+  }, true);
+}
  
  // Get event from URL and set up page
  currentEvent = getEventFromURL();
