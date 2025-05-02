@@ -457,37 +457,7 @@ const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 const CORRECT_PASSWORD = "2222"; // Change this to your desired password
 
 // Password Authentication Functions - THESE MUST BE DEFINED FIRST
-function checkPassword() {
-  console.log("Password check initiated");
-  const enteredPassword = document.getElementById('passwordInput').value;
-  if (enteredPassword === CORRECT_PASSWORD) {
-    console.log("Password correct");
-    // Password correct - show main app and hide login screen
-    document.getElementById('loginScreen').classList.add('d-none');
-    document.getElementById('mainApp').classList.remove('d-none');
-    
-    // Store login state in session storage (clears when browser is closed)
-    sessionStorage.setItem('isLoggedIn', 'true');
-    
-    // Initialize the application
-    initializeApp();
-  } else {
-    console.log("Password incorrect");
-    // Password incorrect - show error
-    document.getElementById('loginError').classList.remove('d-none');
-    document.getElementById('passwordInput').value = '';
-    document.getElementById('passwordInput').focus();
-  }
-}
-
-// Check if user is already logged in
-function checkLoginStatus() {
-  if (sessionStorage.getItem('isLoggedIn') === 'true') {
-    document.getElementById('loginScreen').classList.add('d-none');
-    document.getElementById('mainApp').classList.remove('d-none');
-    initializeApp();
-  }
-}
+SyntaxError: Unexpected identifier 'timestampKey'. Expected ')' to end an argument list.
 
 
 
