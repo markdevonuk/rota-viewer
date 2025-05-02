@@ -841,10 +841,36 @@ function handleSearchKeyPress(event) {
  }
 }
 
-// Remaining Functions
 async function preloadShifts(force = false) {
-
-   try {
+  // Show loading state
+  document.getElementById("rotaContent").innerHTML = `
+    <div class="initial-loading">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div>Loading rota data...</div>
+    </div>
+  `;
+  
+  rotaCache = loadCacheFromStorage();
+  const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
+  
+  if (usingCache) {
+    // Validate cached data before using it
+    if (rotaCache.every(entry => entry.day && entry.role)) {
+      updateAvailableDays();
+      updateStatus("Loaded from cache");
+      document.getElementById("daySelect").disabled = false;
+      // Wait for next tick before loading rota to ensure UI is ready
+      setTimeout(() => loadRota(), 0);
+      return;
+    } else {
+      console.log("Cached data is invalid, fetching fresh data");
+      rotaCache = [];
+    }
+  }
+  
+  try {
     updateStatus("Loading fresh data...");
     
     // Try to fetch from the API
@@ -869,88 +895,56 @@ async function preloadShifts(force = false) {
         throw new Error("No internet connection and no cached data available");
       }
     }
- // Show loading state
- document.getElementById("rotaContent").innerHTML = `
-   <div class="initial-loading">
-     <div class="spinner-border text-primary mb-3" role="status">
-       <span class="visually-hidden">Loading...</span>
-     </div>
-     <div>Loading rota data...</div>
-   </div>
- `;
- 
- rotaCache = loadCacheFromStorage();
- const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
- 
- if (usingCache) {
-   // Validate cached data before using it
-   if (rotaCache.every(entry => entry.day && entry.role)) {
-     updateAvailableDays();
-     updateStatus("Loaded from cache");
-     document.getElementById("daySelect").disabled = false;
-     // Wait for next tick before loading rota to ensure UI is ready
-     setTimeout(() => loadRota(), 0);
-     return;
-   } else {
-     console.log("Cached data is invalid, fetching fresh data");
-     rotaCache = [];
-   }
- }
- 
- try {
-   updateStatus("Loading fresh data...");
-   const res = await fetch(`${API_URL}?action=loadAllShifts&event=${currentEvent}`);
-   const rawData = await res.json();
-   
-   if (rawData.error) {
-     // Display more detailed error information
-     let errorMessage = rawData.error;
-     if (rawData.availableSheets) {
-       errorMessage += "\nAvailable sheets: " + rawData.availableSheets.join(", ");
-     }
-     throw new Error(errorMessage);
-   }
-   
-   if (!Array.isArray(rawData) || rawData.length === 0) {
-     throw new Error("No data received from server");
-   }
-   
-   rotaCache = rawData
-     .filter(entry => entry["Location"] && entry["Day"]) // Filter out empty rows
-     .map(entry => ({
-       shiftTitle: (entry["Section"] || "").trim(),
-       role: (entry["Location"] || "").trim(),
-       // Format the time to ensure 2-digit hours
-       time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
-       crew1: (entry["Crew 1"] || "").trim(),
-       crew2: (entry["Crew 2"] || "").trim(),
-       day: normalizeDay(entry["Day"])
-     }))
-     .filter(entry => entry.day && entry.role); // Double-check after mapping
-   
-   if (rotaCache.length === 0) {
-     throw new Error("No valid shift data found");
-   }
-   
-   saveCacheToStorage();
-   updateAvailableDays();
-   updateStatus("Live rota loaded");
-   document.getElementById("daySelect").disabled = false;
-   
-   // Load the initial view
-   setTimeout(() => loadRota(), 0);
- } catch (err) {
-   console.error("Error loading rota data:", err);
-   updateStatus("Error: " + err.message);
-   document.getElementById("rotaContent").innerHTML = `
-     <div class="alert alert-danger">
-       <h4>Error Loading Data</h4>
-       <p>${err.message}</p>
-       <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
-     </div>
-   `;
-   document.getElementById("daySelect").disabled = true;
- }
+    
+    if (rawData.error) {
+      // Display more detailed error information
+      let errorMessage = rawData.error;
+      if (rawData.availableSheets) {
+        errorMessage += "\nAvailable sheets: " + rawData.availableSheets.join(", ");
+      }
+      throw new Error(errorMessage);
+    }
+    
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+      throw new Error("No data received from server");
+    }
+    
+    rotaCache = rawData
+      .filter(entry => entry["Location"] && entry["Day"]) // Filter out empty rows
+      .map(entry => ({
+        shiftTitle: (entry["Section"] || "").trim(),
+        role: (entry["Location"] || "").trim(),
+        // Format the time to ensure 2-digit hours
+        time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
+        crew1: (entry["Crew 1"] || "").trim(),
+        crew2: (entry["Crew 2"] || "").trim(),
+        day: normalizeDay(entry["Day"])
+      }))
+      .filter(entry => entry.day && entry.role); // Double-check after mapping
+    
+    if (rotaCache.length === 0) {
+      throw new Error("No valid shift data found");
+    }
+    
+    saveCacheToStorage();
+    updateAvailableDays();
+    updateStatus("Live rota loaded");
+    document.getElementById("daySelect").disabled = false;
+    
+    // Load the initial view
+    setTimeout(() => loadRota(), 0);
+  } catch (err) {
+    console.error("Error loading rota data:", err);
+    updateStatus("Error: " + err.message);
+    document.getElementById("rotaContent").innerHTML = `
+      <div class="alert alert-danger">
+        <h4>Error Loading Data</h4>
+        <p>${err.message}</p>
+        <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
+      </div>
+    `;
+    document.getElementById("daySelect").disabled = true;
+  }
 }
 
 function updateAvailableDays() {
