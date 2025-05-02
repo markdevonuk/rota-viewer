@@ -314,10 +314,10 @@ html {
     <div id="loginError" class="alert alert-danger d-none">
       Incorrect password. Please try again.
     </div>
-    <button class="btn btn-primary w-100" onclick="checkPassword()">Login</button>
+    <!-- Added an ID to the button and using inline onclick -->
+    <button id="loginButton" class="btn btn-primary w-100" onclick="checkPassword()">Login</button>
   </div>
 </div>
-
 <!-- Main Application (hidden until login successful) -->
 <div id="mainApp" class="container d-none">
  <!-- Header Row with Logo, Title, My Shifts and Search Icon -->
@@ -454,12 +454,14 @@ let touchEndX = 0;
 let touchStartTime = 0;
 let currentEvent = "";
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
-const CORRECT_PASSWORD = "1111"; // Change this to your desired password
+const CORRECT_PASSWORD = "2222"; // Change this to your desired password
 
-// Password Authentication Functions
+// Password Authentication Functions - THESE MUST BE DEFINED FIRST
 function checkPassword() {
+  console.log("Password check initiated");
   const enteredPassword = document.getElementById('passwordInput').value;
   if (enteredPassword === CORRECT_PASSWORD) {
+    console.log("Password correct");
     // Password correct - show main app and hide login screen
     document.getElementById('loginScreen').classList.add('d-none');
     document.getElementById('mainApp').classList.remove('d-none');
@@ -470,6 +472,7 @@ function checkPassword() {
     // Initialize the application
     initializeApp();
   } else {
+    console.log("Password incorrect");
     // Password incorrect - show error
     document.getElementById('loginError').classList.remove('d-none');
     document.getElementById('passwordInput').value = '';
@@ -486,47 +489,7 @@ function checkLoginStatus() {
   }
 }
 
-// Initialize the application after successful login
-function initializeApp() {
-  // Get event from URL and set up page
-  currentEvent = getEventFromURL();
-  updatePageHeader(currentEvent);
-  
-  // Set current year in copyright
-  setCurrentYear();
-  
-  // Load shifts
-  preloadShifts();
-  
-  // Start auto-refresh
-  startAutoRefresh();
-  
-  // Set up scroll event listener for back to top button
-  window.addEventListener('scroll', handleScroll);
-  
-  // Setup touch and search handlers
-  setupTouchHandlers();
-  
-  // Check if this is the first visit or if user has a saved name
-  checkFirstVisit();
-}
 
-// "My Shifts" Feature Functions
-function checkFirstVisit() {
-  const firstVisitKey = `firstVisit_${currentEvent}`;
-  const userNameKey = `userName_${currentEvent}`;
-  const isFirstVisit = localStorage.getItem(firstVisitKey) !== 'false';
-  const savedUserName = localStorage.getItem(userNameKey);
-  
-  if (isFirstVisit && !savedUserName) {
-    // First visit - show welcome modal
-    showWelcomeModal();
-    localStorage.setItem(firstVisitKey, 'false');
-  } else if (savedUserName) {
-    // Returning user with saved name - show welcome back alert
-    showWelcomeBackAlert(savedUserName);
-  }
-}
 
 function showWelcomeModal() {
   document.getElementById('welcomeBackdrop').classList.add('active');
