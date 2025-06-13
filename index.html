@@ -955,14 +955,48 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "", sectionFilte
      groupedByDay[entry.day].push(entry);
    });
    
-   for (const day in groupedByDay) {
+   // Sort days in the correct order
+   const dayOrder = ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Monday"];
+   const sortedDays = Object.keys(groupedByDay).sort((a, b) => {
+     return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+   });
+   
+   // Iterate through sorted days instead of using for...in
+   sortedDays.forEach(day => {
      html += `<h4 class="mt-4">${day}</h4><div class="row g-3 mb-4">`;
-     groupedByDay[day].forEach(row => {
+     
+     // Sort shifts within each day by shift type and then by time
+     const dayShifts = groupedByDay[day].sort((a, b) => {
+       // First sort by shift type
+       const shiftOrder = ["Early", "Late", "Night", "Other"];
+       const aShiftType = getShiftType(a.shiftTitle);
+       const bShiftType = getShiftType(b.shiftTitle);
+       const shiftComparison = shiftOrder.indexOf(aShiftType) - shiftOrder.indexOf(bShiftType);
+       
+       if (shiftComparison !== 0) {
+         return shiftComparison;
+       }
+       
+       // Then sort by section
+       const aSection = getSectionFromRole(a.role);
+       const bSection = getSectionFromRole(b.role);
+       const sectionComparison = aSection.localeCompare(bSection);
+       
+       if (sectionComparison !== 0) {
+         return sectionComparison;
+       }
+       
+       // Finally sort by role name
+       return a.role.localeCompare(b.role);
+     });
+     
+     dayShifts.forEach(row => {
        html += `
          <div class="col-12 col-md-6">
            <div class="card shadow-sm p-3 ${getCardClass(getSectionFromRole(row.role), row.role)}">
              <div class="card-content">
                <h5>${row.role}</h5>
+               <p><strong>Shift:</strong> ${getShiftType(row.shiftTitle)}</p>
                <p><strong>Time:</strong> ${row.time}</p>
                <p><strong>Crew 1:</strong> ${row.crew1 || "–"}</p>
                <p><strong>Crew 2:</strong> ${row.crew2 || "–"}</p>
@@ -972,11 +1006,13 @@ function renderGroupedRota(data, isSearch = false, searchTerm = "", sectionFilte
        `;
      });
      html += `</div>`;
-   }
+   });
+   
    document.getElementById("rotaContent").innerHTML = html;
    return;
  }
  
+ // Rest of the function remains the same for non-search mode
  const groupedByShift = { Early: [], Late: [], Night: [], Other: [] };
  data.forEach(entry => groupedByShift[getShiftType(entry.shiftTitle)].push(entry));
  
