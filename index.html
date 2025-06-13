@@ -501,7 +501,7 @@ function getSectionFromRole(role) {
  if (/^(mike gate|white medical|white alpha|blue medical|worthy view)/i.test(role)) return "Static Medical Points";
  if (/^stages/i.test(role)) return "Stage Medical";
  if (/^medcomms/i.test(role)) return "Medcomms Team";
- if (/^make/i.test(role)) return "Make Ready Team";
+ if (/^make/i.test(clean)) return "Make Ready Team"; 
  return "General";
 }
 
