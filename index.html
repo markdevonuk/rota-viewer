@@ -237,6 +237,47 @@ html {
   height: 80px;
   margin-bottom: 1rem;
 }
+
+ /* Skeleton Loading Styles */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+.skeleton-card {
+  height: 180px;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.skeleton-text {
+  height: 16px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.skeleton-text.short {
+  width: 60%;
+}
+
+.skeleton-text.medium {
+  width: 75%;
+}
+
+.skeleton-text.long {
+  width: 90%;
+}
+
+@keyframes loading {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
 </style>
 </head>
 <body>
@@ -297,14 +338,9 @@ html {
    <a href="#night" class="ms-2">Night</a>
  </div>
  
- <div id="rotaContent" class="swipe-container">
-   <div class="initial-loading">
-     <div class="spinner-border text-primary mb-3" role="status">
-       <span class="visually-hidden">Loading...</span>
-     </div>
-     <div>Loading rota data...</div>
-   </div>
- </div>
+<div id="rotaContent" class="swipe-container">
+  <!-- Skeleton will be inserted by JavaScript -->
+</div>
  
  <div class="mt-5 text-center">
    <button class="btn btn-outline-secondary me-2" onclick="forceReloadRota()">Reload Rota</button>
@@ -604,6 +640,24 @@ function updateJumpLinksVisibility() {
  shiftLinks.style.display = isSearchMode ? "none" : "block";
 }
 
+ function showSkeletonLoading() {
+  document.getElementById("rotaContent").innerHTML = `
+    <div class="row g-3">
+      ${Array(6).fill().map(() => `
+        <div class="col-12 col-md-6">
+          <div class="card shadow-sm skeleton-card">
+            <div class="skeleton skeleton-text medium"></div>
+            <div class="skeleton skeleton-text short" style="margin-top: 15px;"></div>
+            <div class="skeleton skeleton-text long"></div>
+            <div class="skeleton skeleton-text short"></div>
+            <div class="skeleton skeleton-text medium"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 function setupTouchHandlers() {
  const rotaContent = document.getElementById('rotaContent');
  
@@ -863,17 +917,11 @@ async function preloadShifts(force = false) {
     }
   }
   
-  // Show loading state only if we don't have cached data
-  if (rotaCache.length === 0) {
-    document.getElementById("rotaContent").innerHTML = `
-      <div class="initial-loading">
-        <div class="spinner-border text-primary mb-3" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <div>Loading rota data...</div>
-      </div>
-    `;
-  }
+
+// Show loading state only if we don't have cached data
+if (rotaCache.length === 0) {
+  showSkeletonLoading();
+}
   
   try {
     updateStatus("Loading fresh data...");
@@ -998,8 +1046,7 @@ function loadRota() {
  // Save current state
 saveCacheToStorage();
  
- document.getElementById("rotaContent").innerHTML = 
-   '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+showSkeletonLoading();
  
  const dayData = rotaCache.filter(entry => entry.day.toLowerCase() === day.toLowerCase());
  
@@ -1238,6 +1285,7 @@ window.onload = function() {
 
 // Create a new function that contains your original onload logic
 async function initializeApp() {
+   showSkeletonLoading();
   // Get event from URL and set up page
   currentEvent = getEventFromURL();
   updatePageHeader(currentEvent);
