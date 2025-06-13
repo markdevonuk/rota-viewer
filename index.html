@@ -495,7 +495,7 @@ function getBadgeClass(shiftType) {
 
 function getSectionFromRole(role) {
  const clean = role.trim().toLowerCase();
- if (["duty team leader", "charlie 1", "support"].includes(clean)) return "Leadership";
+ if (/^(duty team leader|charlie 1|support|commander|manager)/i.test(role)) return "Leadership";
  if (/^(alpha|whisky|lima)/i.test(role)) return "Vehicles";
  if (/^romeo/i.test(role)) return "Responders";
  if (/^(mike gate|white medical|white alpha|blue medical|worthy view)/i.test(role)) return "Static Medical Points";
