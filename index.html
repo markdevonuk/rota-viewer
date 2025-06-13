@@ -488,13 +488,81 @@ function getCardClass(section, role) {
 
 // Caching Functions
 function saveCacheToStorage() {
- // Use event-specific cache key
- const cacheKey = `rotaCache_${currentEvent}`;
- const timestampKey = `rotaCacheTimestamp_${currentEvent}`;
- 
- localStorage.setItem(cacheKey, JSON.stringify(rotaCache));
- localStorage.setItem(timestampKey, Date.now());
- updateLastRefreshTime();
+  const cacheKey = `rotaCache_${currentEvent}`;
+  const timestampKey = `rotaCacheTimestamp_${currentEvent}`;
+  const stateKey = `rotaState_${currentEvent}`;
+  
+  // Save data
+  localStorage.setItem(cacheKey, JSON.stringify(rotaCache));
+  localStorage.setItem(timestampKey, Date.now());
+  
+  // Save current UI state
+  const currentState = {
+    selectedDay: document.getElementById('daySelect')?.value,
+    sectionFilter: document.getElementById('sectionFilter')?.value || 'all',
+    isSearchMode: isSearchMode,
+    currentSearchTerm: currentSearchTerm,
+    scrollPosition: window.scrollY
+  };
+  localStorage.setItem(stateKey, JSON.stringify(currentState));
+  
+  updateLastRefreshTime();
+}
+
+ function restoreUIState() {
+  const stateKey = `rotaState_${currentEvent}`;
+  const savedState = localStorage.getItem(stateKey);
+  
+  if (savedState) {
+    try {
+      const state = JSON.parse(savedState);
+      
+      // Restore day selection
+      if (state.selectedDay && document.getElementById('daySelect')) {
+        const daySelect = document.getElementById('daySelect');
+        if ([...daySelect.options].some(option => option.value === state.selectedDay)) {
+          daySelect.value = state.selectedDay;
+        }
+      }
+      
+      // Restore section filter
+      if (state.sectionFilter && document.getElementById('sectionFilter')) {
+        document.getElementById('sectionFilter').value = state.sectionFilter;
+      }
+      
+      // Restore search state
+      if (state.isSearchMode && state.currentSearchTerm) {
+        isSearchMode = state.isSearchMode;
+        currentSearchTerm = state.currentSearchTerm;
+        updateJumpLinksVisibility();
+        
+        // Re-run the search
+        setTimeout(() => {
+          const results = rotaCache.filter(entry => 
+            entry.crew1.toLowerCase().includes(state.currentSearchTerm.toLowerCase()) || 
+            entry.crew2.toLowerCase().includes(state.currentSearchTerm.toLowerCase())
+          );
+          renderGroupedRota(results, true, state.currentSearchTerm, state.sectionFilter);
+          
+          // Restore scroll position
+          if (state.scrollPosition) {
+            setTimeout(() => window.scrollTo(0, state.scrollPosition), 100);
+          }
+        }, 200);
+        
+        return true; // Indicate that we restored search state
+      }
+      
+      // Restore scroll position for normal view
+      if (state.scrollPosition) {
+        setTimeout(() => window.scrollTo(0, state.scrollPosition), 100);
+      }
+      
+    } catch (e) {
+      console.error("Error restoring UI state:", e);
+    }
+  }
+  return false;
 }
 
 function loadCacheFromStorage() {
@@ -513,7 +581,7 @@ function loadCacheFromStorage() {
  return [];
 }
 
-function isCacheStale(minutes = 15) {
+function isCacheStale(minutes = 30) {
  // Use event-specific timestamp key
  const timestampKey = `rotaCacheTimestamp_${currentEvent}`;
  const lastUpdate = parseInt(localStorage.getItem(timestampKey) || "0");
@@ -663,6 +731,8 @@ function runSearch() {
  currentSearchTerm = query;
  updateJumpLinksVisibility();
  toggleSearch(); // Close the search modal
+ // Save current state
+saveCacheToStorage();
  
  const matches = [];
  const foundNames = new Set();
@@ -768,88 +838,100 @@ function handleSearchKeyPress(event) {
 
 // Remaining Functions
 async function preloadShifts(force = false) {
- // Show loading state
- document.getElementById("rotaContent").innerHTML = `
-   <div class="initial-loading">
-     <div class="spinner-border text-primary mb-3" role="status">
-       <span class="visually-hidden">Loading...</span>
-     </div>
-     <div>Loading rota data...</div>
-   </div>
- `;
- 
- rotaCache = loadCacheFromStorage();
- const usingCache = !force && rotaCache.length > 0 && !isCacheStale(15);
- 
- if (usingCache) {
-   // Validate cached data before using it
-   if (rotaCache.every(entry => entry.day && entry.role)) {
-     updateAvailableDays();
-     updateStatus("Loaded from cache");
-     document.getElementById("daySelect").disabled = false;
-     // Wait for next tick before loading rota to ensure UI is ready
-     setTimeout(() => loadRota(), 0);
-     return;
-   } else {
-     console.log("Cached data is invalid, fetching fresh data");
-     rotaCache = [];
-   }
- }
- 
- try {
-   updateStatus("Loading fresh data...");
-   const res = await fetch(`${API_URL}?action=loadAllShifts&event=${currentEvent}`);
-   const rawData = await res.json();
-   
-   if (rawData.error) {
-     // Display more detailed error information
-     let errorMessage = rawData.error;
-     if (rawData.availableSheets) {
-       errorMessage += "\nAvailable sheets: " + rawData.availableSheets.join(", ");
-     }
-     throw new Error(errorMessage);
-   }
-   
-   if (!Array.isArray(rawData) || rawData.length === 0) {
-     throw new Error("No data received from server");
-   }
-   
-   rotaCache = rawData
-     .filter(entry => entry["Location"] && entry["Day"]) // Filter out empty rows
-     .map(entry => ({
-       shiftTitle: (entry["Section"] || "").trim(),
-       role: (entry["Location"] || "").trim(),
-       // Format the time to ensure 2-digit hours
-       time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
-       crew1: (entry["Crew 1"] || "").trim(),
-       crew2: (entry["Crew 2"] || "").trim(),
-       day: normalizeDay(entry["Day"])
-     }))
-     .filter(entry => entry.day && entry.role); // Double-check after mapping
-   
-   if (rotaCache.length === 0) {
-     throw new Error("No valid shift data found");
-   }
-   
-   saveCacheToStorage();
-   updateAvailableDays();
-   updateStatus("Live rota loaded");
-   document.getElementById("daySelect").disabled = false;
-   
-   // Load the initial view
-   setTimeout(() => loadRota(), 0);
- } catch (err) {
-   console.error("Error loading rota data:", err);
-   updateStatus("Error: " + err.message);
-   document.getElementById("rotaContent").innerHTML = `
-     <div class="alert alert-danger">
-       <h4>Error Loading Data</h4>
-       <p>${err.message}</p>
-       <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
-     </div>
-   `;
-   document.getElementById("daySelect").disabled = true;
- }
+  rotaCache = loadCacheFromStorage();
+  const usingCache = !force && rotaCache.length > 0 && !isCacheStale(30);
+  
+  if (usingCache) {
+    // Validate cached data before using it
+    if (rotaCache.every(entry => entry.day && entry.role)) {
+      updateAvailableDays();
+      updateStatus("Loaded from cache");
+      document.getElementById("daySelect").disabled = false;
+      
+      // Try to restore previous UI state first
+      const restoredSearchState = restoreUIState();
+      
+      // If we didn't restore search state, load normal rota view
+      if (!restoredSearchState) {
+        setTimeout(() => loadRota(), 0);
+      }
+      return;
+    } else {
+      console.log("Cached data is invalid, fetching fresh data");
+      rotaCache = [];
+    }
+  }
+  
+  // Show loading state only if we don't have cached data
+  if (rotaCache.length === 0) {
+    document.getElementById("rotaContent").innerHTML = `
+      <div class="initial-loading">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div>Loading rota data...</div>
+      </div>
+    `;
+  }
+  
+  try {
+    updateStatus("Loading fresh data...");
+    const res = await fetch(`${API_URL}?action=loadAllShifts&event=${currentEvent}`);
+    const rawData = await res.json();
+    
+    if (rawData.error) {
+      let errorMessage = rawData.error;
+      if (rawData.availableSheets) {
+        errorMessage += "\nAvailable sheets: " + rawData.availableSheets.join(", ");
+      }
+      throw new Error(errorMessage);
+    }
+    
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+      throw new Error("No data received from server");
+    }
+    
+    rotaCache = rawData
+      .filter(entry => entry["Location"] && entry["Day"])
+      .map(entry => ({
+        shiftTitle: (entry["Section"] || "").trim(),
+        role: (entry["Location"] || "").trim(),
+        time: formatTime(`${entry["Start"]} - ${entry["Finish"]}`),
+        crew1: (entry["Crew 1"] || "").trim(),
+        crew2: (entry["Crew 2"] || "").trim(),
+        day: normalizeDay(entry["Day"])
+      }))
+      .filter(entry => entry.day && entry.role);
+    
+    if (rotaCache.length === 0) {
+      throw new Error("No valid shift data found");
+    }
+    
+    saveCacheToStorage();
+    updateAvailableDays();
+    updateStatus("Live rota loaded");
+    document.getElementById("daySelect").disabled = false;
+    
+    // Try to restore previous UI state first
+    const restoredSearchState = restoreUIState();
+    
+    // If we didn't restore search state, load normal rota view
+    if (!restoredSearchState) {
+      setTimeout(() => loadRota(), 0);
+    }
+    
+  } catch (err) {
+    console.error("Error loading rota data:", err);
+    updateStatus("Error: " + err.message);
+    document.getElementById("rotaContent").innerHTML = `
+      <div class="alert alert-danger">
+        <h4>Error Loading Data</h4>
+        <p>${err.message}</p>
+        <button class="btn btn-primary mt-3" onclick="forceReloadRota()">Try Again</button>
+      </div>
+    `;
+    document.getElementById("daySelect").disabled = true;
+  }
 }
 
 function updateAvailableDays() {
@@ -912,6 +994,8 @@ function loadRota() {
  
  const savedDayKey = `selectedDay_${currentEvent}`;
  localStorage.setItem(savedDayKey, day);
+ // Save current state
+saveCacheToStorage();
  
  document.getElementById("rotaContent").innerHTML = 
    '<div class="spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
@@ -1081,24 +1165,44 @@ function navigateDay(direction) {
 
 // Auto Refresh
 function startAutoRefresh() {
- // Clear any existing timers first
- if (autoRefreshTimer) {
-   clearInterval(autoRefreshTimer);
- }
- 
- // Set up the auto-refresh timer to run every 10 minutes
- autoRefreshTimer = setInterval(() => {
-   console.log("Auto-refreshing rota data...");
-   preloadShifts(true); // Force refresh the data
- }, AUTO_REFRESH_INTERVAL);
- 
- // Also refresh when the page regains focus
- document.addEventListener('visibilitychange', () => {
-   if (document.visibilityState === 'visible') {
-     console.log("Page is visible again, refreshing data...");
-     preloadShifts(true);
-   }
- });
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+  }
+  
+  // Increase auto-refresh interval to 30 minutes
+  const EXTENDED_AUTO_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+  
+  autoRefreshTimer = setInterval(() => {
+    // Only refresh if the page is visible and cache is stale
+    if (document.visibilityState === 'visible' && isCacheStale(30)) {
+      console.log("Auto-refreshing rota data...");
+      preloadShifts(true);
+    }
+  }, EXTENDED_AUTO_REFRESH_INTERVAL);
+  
+  // Add visibility change handler
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+ function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    // Only refresh if cache is actually stale (30+ minutes old)
+    if (isCacheStale(30)) {
+      console.log("Cache is stale, refreshing data...");
+      preloadShifts(true);
+    } else {
+      console.log("Cache is still fresh, not refreshing");
+      // Just restore the UI state if needed
+      if (rotaCache.length > 0) {
+        restoreUIState();
+      }
+    }
+  } else {
+    // Save state when leaving the page
+    if (rotaCache.length > 0) {
+      saveCacheToStorage();
+    }
+  }
 }
 
 // Utility Functions
