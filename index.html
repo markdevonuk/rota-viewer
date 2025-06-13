@@ -536,13 +536,13 @@ function saveCacheToStorage() {
         currentSearchTerm = state.currentSearchTerm;
         updateJumpLinksVisibility();
         
-        // Re-run the search
-        setTimeout(() => {
-          const results = rotaCache.filter(entry => 
-            entry.crew1.toLowerCase().includes(state.currentSearchTerm.toLowerCase()) || 
-            entry.crew2.toLowerCase().includes(state.currentSearchTerm.toLowerCase())
-          );
-          renderGroupedRota(results, true, state.currentSearchTerm, state.sectionFilter);
+       // Re-run the search
+setTimeout(() => {
+  const results = rotaCache.filter(entry => 
+    entry.crew1.trim().toLowerCase() === state.currentSearchTerm.trim().toLowerCase() || 
+    entry.crew2.trim().toLowerCase() === state.currentSearchTerm.trim().toLowerCase()
+  );
+  renderGroupedRota(results, true, state.currentSearchTerm, state.sectionFilter);
           
           // Restore scroll position
           if (state.scrollPosition) {
@@ -793,6 +793,7 @@ function handleNameSelection(name, originalSearch = "") {
  
  // Ensure search mode is active
  isSearchMode = true;
+ currentSearchTerm = name;
  
  // Slight delay to ensure clean touch interaction
  setTimeout(() => {
